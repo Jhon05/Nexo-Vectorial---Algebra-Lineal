@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="MANIFEST_NEXO_VECTORIAL_2_6" version="1.2"
+ xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
+ xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://www.imsproject.org/xsd/imscp_rootv1p1p2 imscp_rootv1p1p2.xsd http://www.adlnet.org/xsd/adlcp_rootv1p2 adlcp_rootv1p2.xsd">
+  <metadata>
+    <schema>ADL SCORM</schema>
+    <schemaversion>1.2</schemaversion>
+  </metadata>
+  <organizations default="ORG_NEXO">
+    <organization identifier="ORG_NEXO">
+      <title>Nexo Vectorial — Operación Matriz Cero v3.1</title>
+      <item identifier="ITEM_NEXO" identifierref="RES_NEXO">
+        <title>Nexo Vectorial — Informe HTML MathJax · GitHub + SCORM Brightspace · Álgebra Lineal Corte 1</title>
+      </item>
+    </organization>
+  </organizations>
+  <resources>
+    <resource identifier="RES_NEXO" type="webcontent" adlcp:scormtype="sco" href="index.html">
+      <file href="index.html"/>
+      <file href="styles.css"/>
+      <file href="game.js"/>
+      <file href="questions.js"/>
+      <file href="scorm.js"/>
+      <file href="mathjax-tex-svg.js"/>
+      <file href="README.md"/>
+    </resource>
+  </resources>
+</manifest>

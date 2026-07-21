@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#020817" />
+  <title>Nexo Vectorial v3.0 — Progreso por mundos seleccionados</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']], processEscapes: true, processEnvironments: true },
+      svg: { fontCache: 'global', scale: 1.16, displayAlign: 'left', displayIndent: '0' },
+      options: { enableMenu: false, skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+    };
+  </script>
+  <script defer src="mathjax-tex-svg.js"></script>
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <section id="bootScreen" class="boot-screen" aria-labelledby="gameTitle">
+      <canvas id="bootCanvas" aria-hidden="true"></canvas>
+      <div class="boot-overlay"></div>
+      <div class="boot-content glass-panel simple-boot-content">
+        <div class="brand-lockup simple-brand">
+          <div class="brand-mark compact-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div class="compact-brand-copy">
+            <p class="eyebrow">ÁLGEBRA LINEAL · CORTE 1</p>
+            <h1 id="gameTitle">NEXO VECTORIAL</h1>
+            <p class="subtitle">OPERACIÓN MATRIZ CERO</p>
+          </div>
+        </div>
+        <p class="simple-tagline">Pilota, resuelve y conquista cada nivel.</p>
+        <div class="simple-start-card minimal-start-card">
+          <label class="field-label" for="studentName">Nombre</label>
+          <input id="studentName" type="text" maxlength="60" placeholder="Escribe tu nombre" autocomplete="name" />
+          <button id="chooseTopicsBtn" type="button" class="topic-picker-btn minimal-topic-picker">
+            <span>Elegir temas</span>
+            <strong id="selectedTopicsCompact">2 temas principales</strong>
+          </button>
+          <div id="topicInputStore" hidden>
+            <input class="topic-check" type="checkbox" value="v2d-ops" checked>
+            <input class="topic-check" type="checkbox" value="v2d-geometry" checked>
+            <input class="topic-check" type="checkbox" value="v3d-ops" checked>
+            <input class="topic-check" type="checkbox" value="v3d-dot" checked>
+            <input class="topic-check" type="checkbox" value="m22-ops">
+            <input class="topic-check" type="checkbox" value="m33-ops">
+            <input class="topic-check" type="checkbox" value="m22-systems">
+            <input class="topic-check" type="checkbox" value="m33-systems">
+            <input class="topic-check" type="checkbox" value="mixed-boss">
+            <input class="topic-check" type="checkbox" value="gauss-boss">
+          </div>
+          <div class="simple-actions minimal-actions">
+            <button id="launchBtn" type="button" class="primary-btn">INICIAR</button>
+            <button id="howBtn" type="button" class="ghost-btn">CÓMO JUGAR</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="game-screen" hidden>
+      <header class="hud-top">
+        <div class="hud-brand">
+          <div class="brand-mark small" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div><strong>NEXO VECTORIAL</strong><small>OPERACIÓN MATRIZ CERO</small></div>
+        </div>
+        <div class="hud-metric energy"><span class="metric-icon">❤</span><div><small>VIDA <b id="lifeValue">5.0/5</b></small><div id="energyBars" class="energy-bars" aria-label="Vida de la nave"></div></div></div>
+        <div class="hud-metric"><span class="metric-icon">★</span><div><small>PUNTAJE</small><strong id="scoreText">0.00 / 5.00</strong></div></div>
+        <div class="hud-metric integrity-hud"><span class="metric-icon">◈</span><div><small>INTEGRIDAD</small><strong id="integrityText">0 / 5</strong><em class="integrity-rule">5 = QUIZ ANULADO</em></div></div>
+        <button id="soundBtn" class="icon-btn" type="button" aria-label="Activar o silenciar sonido">🔊</button>
+      </header>
+
+      <div id="gameLayout" class="game-layout flight-mode">
+        <nav class="side-rail" aria-label="Navegación de misión">
+          <button type="button" data-panel="mission" class="active"><span>⌖</span><b>MISIÓN</b></button>
+          <button type="button" data-panel="log"><span>▤</span><b>BITÁCORA</b></button>
+          <button type="button" data-panel="progress"><span>▥</span><b>PROGRESO</b></button>
+          <button type="button" data-panel="help"><span>?</span><b>AYUDA</b></button>
+        </nav>
+
+        <main class="playfield" aria-label="Zona de juego">
+          <div class="sector-banner"><span id="sectorNumber">SECTOR 1</span><strong id="sectorName">HANGAR DE VECTORES</strong></div>
+          <canvas id="gameCanvas" tabindex="0" aria-label="Vuelo y visualización interactiva de la misión"></canvas>
+          <div id="flightHud" class="flight-hud" aria-live="polite">
+            <span class="flight-kicker">NAVEGACIÓN AUTÓNOMA</span>
+            <strong id="flightTitle">TRAZANDO RUTA DE APROXIMACIÓN</strong>
+            <div class="flight-progress" aria-label="Progreso del vuelo"><i id="flightProgressFill"></i></div>
+            <small id="flightTarget">Entrando al campo de asteroides…</small>
+            <div class="space-stats" aria-label="Estado del espacio">
+              <span id="densityText">DENSIDAD ALTA</span>
+              <span id="asteroidText">ASTEROIDES 0</span>
+              <span id="warpText">PORTAL EN BÚSQUEDA</span>
+              <span id="laserText">LÁSER LISTO</span>
+              <span id="destroyedText">DESTRUIDOS 0</span>
+              <span id="phaseText">FASE ASTEROIDES</span>
+              <span id="enemyText">ENEMIGOS 0</span>
+              <span id="astroMessageText" class="astro-message-stat" hidden>ASTRO EN APROXIMACIÓN</span>
+            </div>
+          </div>
+          <div id="astroCompass" class="astro-compass" hidden aria-live="polite" aria-label="Brújula del astro brillante">
+            <div class="astro-compass-ring" aria-hidden="true"><i id="astroCompassArrow"></i><b>✦</b></div>
+            <div class="astro-compass-copy"><small>ASTRO BRILLANTE</small><strong id="astroCompassName">GAUSS</strong><span id="astroCompassDistance">DISTANCIA 0 · VALE 2 PRUEBAS</span></div>
+          </div>
+          <div id="arrivalChip" class="arrival-chip" hidden>IMPACTO DETECTADO</div>
+          <div id="combatHud" class="combat-hud" aria-live="polite">
+            <span>ESPACIO · CLIC · BOTÓN</span>
+            <strong>DISPARAR LÁSER</strong>
+            <div class="laser-track"><i id="laserCooldownFill"></i></div>
+          </div>
+          <div id="challengeRibbon" class="challenge-ribbon" hidden></div>
+          <div id="bossHud" class="boss-hud" hidden>
+            <div><small id="bossFormText">JEFE FINAL · FORMA 1/4</small><strong id="bossNameText">NAVE NÚCLEO OMEGA</strong></div>
+            <div class="boss-health-track"><i id="bossHealthFill"></i></div>
+            <span id="bossHealthText">100%</span>
+          </div>
+          <div id="scorePopupLayer" class="score-popup-layer" aria-hidden="true"></div>
+          <div class="canvas-instruction"><span>⌖</span><span id="canvasInstruction">Analiza el sistema visual y responde el reto.</span></div>
+          <div class="mobile-pad" aria-label="Controles de la nave">
+            <button type="button" data-move="left" aria-label="Mover a la izquierda">◀</button>
+            <button type="button" data-move="up" aria-label="Mover hacia arriba">▲</button>
+            <button type="button" data-move="down" aria-label="Mover hacia abajo">▼</button>
+            <button type="button" data-move="right" aria-label="Mover a la derecha">▶</button>
+            <button id="fireBtn" type="button" data-fire="true" class="fire-control" aria-label="Disparar láser">✦<small>FUEGO</small></button>
+          </div>
+        </main>
+
+        <aside class="question-panel" role="dialog" aria-modal="true" aria-live="polite" aria-label="Mensaje de desafío matemático">
+          <div class="transmission-strip"><span class="signal-pulse"></span><b>TRANSMISIÓN DE EMERGENCIA</b><span id="messageKind">COLISIÓN</span></div>
+          <div class="question-head">
+            <div><small id="questionCounter">PREGUNTA 1 / 24</small><strong id="questionTypeBadge">SELECCIÓN MÚLTIPLE</strong></div>
+            <div id="questionProgress" class="segmented-progress" aria-label="Progreso de preguntas"></div>
+          </div>
+
+          <div id="questionBody" class="question-body"></div>
+          <canvas id="miniCanvas" aria-label="Apoyo visual de la pregunta"></canvas>
+          <div id="answerArea" class="answer-area"></div>
+
+          <div class="question-actions">
+            <button id="hintBtn" type="button" class="action-btn hint">💡 PISTA</button>
+            <button id="submitBtn" type="button" class="action-btn submit">➤ ENVIAR</button>
+            <button id="reportBtn" type="button" class="action-btn report">▤ INFORME</button>
+            <button id="continueBtn" type="button" class="action-btn continue" hidden>🚀 CONTINUAR EN LA NAVE</button>
+          </div>
+
+          <div id="feedbackBox" class="feedback-box" role="status" aria-live="assertive">
+            <span class="feedback-icon">i</span><p id="feedbackText">Selecciona o escribe una respuesta y luego pulsa Enviar.</p>
+          </div>
+        </aside>
+      </div>
+
+      <footer class="hud-bottom">
+        <div class="level-chip"><small>NIVEL</small><strong id="levelText">1</strong></div>
+        <div class="xp-wrap"><span>EXP</span><div class="xp-track"><div id="xpFill"></div></div><strong id="xpText">0 / 600</strong></div>
+        <div class="sector-dots" id="sectorDots" aria-label="Progreso por sectores"></div>
+        <button id="finishBtn" type="button" class="finish-btn">FINALIZAR Y ENVIAR NOTA</button>
+      </footer>
+    </section>
+
+    <div id="fullscreenGate" class="fullscreen-gate" hidden>
+      <div class="fullscreen-card glass-panel" role="alertdialog" aria-modal="true" aria-labelledby="fullscreenTitle">
+        <div class="fullscreen-symbol" aria-hidden="true">⛶</div>
+        <h2 id="fullscreenTitle">Pantalla completa obligatoria</h2>
+        <p>La misión se pausa cuando el juego abandona la pantalla completa. Vuelve a entrar para continuar exactamente donde estabas.</p>
+        <button id="reenterFullscreenBtn" type="button" class="primary-btn">VOLVER A PANTALLA COMPLETA</button>
+      </div>
+    </div>
+
+    <div id="modal" class="modal" hidden>
+      <div class="modal-card glass-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <button id="modalClose" class="modal-close" type="button" aria-label="Cerrar">×</button>
+        <h2 id="modalTitle">Información</h2>
+        <div id="modalContent"></div>
+        <div id="modalActions" class="modal-actions"></div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <script src="scorm.js"></script>
+  <script src="questions.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
