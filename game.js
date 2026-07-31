@@ -1658,7 +1658,7 @@
     window.addEventListener('blur',()=>{Object.keys(held).forEach(k=>held[k]=false);if(evaluationActive()&&document.visibilityState==='visible')integrityStrike('Cambio de foco','La ventana del juego dejó de estar activa.');});
     document.addEventListener('fullscreenchange',handleFullscreenChange);document.addEventListener('webkitfullscreenchange',handleFullscreenChange);els.reenterFullscreen.addEventListener('click',reenterFullscreen);
     const responsive=()=>{resizeAll();if(state.phase==='question'){const q=state.currentChallenge?.q||questions[state.questionIndex];fitMiniCanvas(q);setTimeout(()=>{resizeAll();if(q&&!els.mini.hidden)drawMini(q,performance.now());},45);}};
-    window.addEventListener('resize',responsive);window.addEventListener('orientationchange',()=>setTimeout(responsive,220));window.visualViewport?.addEventListener('resize',()=>setTimeout(responsive,70));window.addEventListener('beforeunload',()=>saveProgress());
+    window.addEventListener('resize',responsive);window.addEventListener('orientationchange',()=>setTimeout(responsive,220));window.visualViewport?.addEventListener('resize',()=>setTimeout(responsive,70));const closeScormSession=()=>{if(state.completed)return;saveProgress();NVScorm.suspend?.(state);};window.addEventListener('pagehide',closeScormSession,{capture:true,once:true});window.addEventListener('beforeunload',closeScormSession,{capture:true,once:true});
     updateTopicSelectionUI();
   };
 
