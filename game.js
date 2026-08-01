@@ -55,7 +55,7 @@
   }
   function resizeAll(){
     [els.bootCanvas,els.canvas,els.mini].forEach(c=>{
-      const r=c.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);c.width=Math.max(1,Math.round(r.width*d));c.height=Math.max(1,Math.round(r.height*d));c._d=d;
+      const r=c.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,(navigator.hardwareConcurrency||8)<=4?1:1.45);c.width=Math.max(1,Math.round(r.width*d));c.height=Math.max(1,Math.round(r.height*d));c._d=d;
     });
   }
   function isFullscreen(){return !!(document.fullscreenElement||document.webkitFullscreenElement);}
@@ -156,7 +156,7 @@
   function renderProgress(){els.qProg.innerHTML=questions.map((_,i)=>`<i class="${i<state.questionIndex?'done':i===state.questionIndex?'current':''}"></i>`).join('');}
   function updateHUD(){
     els.score.textContent=`${state.score.toFixed(2)} / 5.00`;els.integrity.textContent=`${state.integrity} / 5`;renderEnergy();
-    const level=Math.min(12,1+Math.floor(state.xp/200));els.level.textContent=level;els.xp.textContent=`${state.xp} / ${level*600}`;els.xpFill.style.width=`${Math.min(100,(state.xp%(level*600))/(level*600)*100)}%`;
+    const level=Math.min(12,1+Math.floor(state.xp/200));els.level.textContent=level;els.xp.textContent=`${Math.max(0,Math.round(state.xp||0))} PTS`;els.xpFill.style.width=`${Math.min(100,(state.xp%(level*600))/(level*600)*100)}%`;
     $$('#sectorDots button').forEach((b,i)=>{b.classList.toggle('complete',state.sectorProgress[i]>=6);b.classList.toggle('active',(questions[state.questionIndex]?.sector||4)-1===i);b.title=`${sectorNames[i]}: ${state.sectorProgress[i]}/6`;});
   }
   function renderEnergy(){els.energy.innerHTML=Array.from({length:5},(_,i)=>`<i class="${i<Math.ceil(state.energy)?'on':''}"></i>`).join('');}
@@ -240,7 +240,7 @@
 
   function animate(t){if(els.game.hidden)return;const dt=Math.min(.033,(t-(state.lastFrame||t))/1000);state.lastFrame=t;const q=questions[state.questionIndex];drawScene(q,t,dt);if(state.phase==='question')drawMini(q,t);raf=requestAnimationFrame(animate);}
   function prep(c,context){const d=c._d||1;context.setTransform(d,0,0,d,0,0);return {w:c.width/d,h:c.height/d};}
-  function drawBoot(t){const {w,h}=prep(els.bootCanvas,bctx);bctx.clearRect(0,0,w,h);const g=bctx.createLinearGradient(0,0,w,h);g.addColorStop(0,'#010716');g.addColorStop(.55,'#06315a');g.addColorStop(1,'#010611');bctx.fillStyle=g;bctx.fillRect(0,0,w,h);bctx.strokeStyle='rgba(32,229,255,.16)';bctx.lineWidth=1;for(let x=-h;x<w+h;x+=46){bctx.beginPath();bctx.moveTo(x,0);bctx.lineTo(x-h,h);bctx.stroke()}for(let i=0;i<90;i++){const x=(i*97)%w,y=(i*53)%h;bctx.fillStyle=`rgba(120,220,255,${.15+(i%5)*.07})`;bctx.fillRect(x,y,1.5,1.5)}const cx=w*.72,cy=h*.48;for(let r=60;r<Math.min(w,h)*.44;r+=44){bctx.strokeStyle=`rgba(32,229,255,${.16-r/3000})`;bctx.lineWidth=2;bctx.beginPath();bctx.ellipse(cx,cy,r,r*.34,0,0,Math.PI*2);bctx.stroke()}bctx.strokeStyle='rgba(32,229,255,.5)';for(let i=0;i<4;i++){const a=-.8+i*.55;bctx.beginPath();bctx.moveTo(cx,cy);bctx.lineTo(cx+Math.cos(a)*260,cy+Math.sin(a)*180);bctx.stroke()}requestAnimationFrame(drawBoot);}
+  function drawBoot(t){const {w,h}=prep(els.bootCanvas,bctx);bctx.clearRect(0,0,w,h);const g=bctx.createLinearGradient(0,0,w,h);g.addColorStop(0,'#010716');g.addColorStop(.55,'#06315a');g.addColorStop(1,'#010611');bctx.fillStyle=g;bctx.fillRect(0,0,w,h);bctx.strokeStyle='rgba(32,229,255,.16)';bctx.lineWidth=1;for(let x=-h;x<w+h;x+=46){bctx.beginPath();bctx.moveTo(x,0);bctx.lineTo(x-h,h);bctx.stroke()}for(let i=0;i<90;i++){const x=(i*97)%w,y=(i*53)%h;bctx.fillStyle=`rgba(120,220,255,${.15+(i%5)*.07})`;bctx.fillRect(x,y,1.5,1.5)}const cx=w*.72,cy=h*.48;for(let r=60;r<Math.min(w,h)*.44;r+=44){bctx.strokeStyle=`rgba(32,229,255,${.16-r/3000})`;bctx.lineWidth=2;bctx.beginPath();bctx.ellipse(cx,cy,r,r*.34,0,0,Math.PI*2);bctx.stroke()}bctx.strokeStyle='rgba(32,229,255,.5)';for(let i=0;i<4;i++){const a=-.8+i*.55;bctx.beginPath();bctx.moveTo(cx,cy);bctx.lineTo(cx+Math.cos(a)*260,cy+Math.sin(a)*180);bctx.stroke()}if(!els.boot.hidden&&!state.startedAt)requestAnimationFrame(drawBoot);}
   function drawScene(q,t,dt){if(!q)return;const {w,h}=prep(els.canvas,ctx);ctx.clearRect(0,0,w,h);if(state.phase==='paused'){drawFlightScene(ctx,w,h,q,t,dt,true);drawPauseVeil(ctx,w,h);return;}if(['flight','departure','arrival'].includes(state.phase)){drawFlightScene(ctx,w,h,q,t,dt,false);drawParticles(ctx,w,h,dt);return;}drawSciBackground(ctx,w,h,q.sector,t);if(q.sector===1)drawVectorScene(ctx,w,h,q.visual,t);if(q.sector===2)drawMatrixFactory(ctx,w,h,q.visual,t);if(q.sector===3)drawReactor(ctx,w,h,q.visual,t);if(q.sector===4)drawGaussRoom(ctx,w,h,q.visual,t);updateShipPhysics(w,h,dt,.35);drawShip(ctx,w/2+state.drone.x,h*.79+state.drone.y,t,state.drone.tilt,.72);drawParticles(ctx,w,h,dt);}
   function drawSciBackground(c,w,h,sector,t){const hue=[198,205,194,220][sector-1];const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,`hsl(${hue} 70% 13%)`);g.addColorStop(.5,'#061426');g.addColorStop(1,'#020711');c.fillStyle=g;c.fillRect(0,0,w,h);c.strokeStyle='rgba(44,157,255,.13)';for(let y=60;y<h;y+=42){c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke()}for(let x=0;x<w;x+=54){c.beginPath();c.moveTo(x,0);c.lineTo(x,h);c.stroke()}c.fillStyle='rgba(3,8,18,.6)';c.beginPath();c.moveTo(0,0);c.lineTo(w*.18,0);c.lineTo(w*.3,h);c.lineTo(0,h);c.fill();c.beginPath();c.moveTo(w,0);c.lineTo(w*.82,0);c.lineTo(w*.7,h);c.lineTo(w,h);c.fill();c.strokeStyle='rgba(32,229,255,.22)';c.lineWidth=2;c.strokeRect(w*.08,h*.08,w*.84,h*.76);}
   function drawVectorScene(c,w,h,v,t){const ox=w*.48,oy=h*.58,scale=Math.min(w/12,h/10);drawGrid(c,ox,oy,scale,w,h);if(v.kind==='projection'){drawArrow(c,ox,oy,v.a[0]*scale,-v.a[1]*scale,'#25a1ff','a');drawArrow(c,ox,oy,v.b[0]*scale,-v.b[1]*scale,'#65f192','b');drawArrow(c,ox,oy,v.proj[0]*scale,-v.proj[1]*scale,'#ffd250','proj');c.setLineDash([6,5]);c.strokeStyle='#ffd250';c.beginPath();c.moveTo(ox+v.a[0]*scale,oy-v.a[1]*scale);c.lineTo(ox+v.proj[0]*scale,oy-v.proj[1]*scale);c.stroke();c.setLineDash([]);}else{if(v.u)drawArrow(c,ox,oy,v.u[0]*scale,-v.u[1]*scale,'#2585ff','u');if(v.v&&v.v.some(n=>n))drawArrow(c,ox,oy,v.v[0]*scale,-v.v[1]*scale,'#64ec83','v');if(v.result&&v.showResult)drawArrow(c,ox,oy,v.result[0]*scale,-v.result[1]*scale,'#ffd250','u+v');}c.fillStyle='rgba(32,229,255,.08)';c.fillRect(ox-scale*4.7,oy-scale*4.2,scale*9.4,scale*8.2);}
@@ -368,7 +368,7 @@
   function triggerCollision(kind,obj){
     if(state.phase!=='flight'||state.completed||performance.now()<(state.space?.invulnerableUntil||0))return;
     const s=state.space;s.flashUntil=performance.now()+520;
-    const portalPool=blackHoleQuestions.filter(x=>x.sector===s.sector);const challengeQ=kind==='asteroid'?questions[state.questionIndex]:portalPool[state.blackHoleIndex%portalPool.length];
+    const portalPool=questionsForSectorWorld(blackHoleQuestions,s.sector);const portalFallback=fallbackQuestionForSectorWorld(s.sector,false);const challengeQ=kind==='asteroid'?questions[state.questionIndex]:(portalPool.length?portalPool[state.blackHoleIndex%portalPool.length]:portalFallback);
     state.currentChallenge={kind,objectId:obj.id,q:challengeQ,snapshot:{route:s.route,drone:{...state.drone},sector:s.sector}};
     if(kind==='asteroid'){state.stats.asteroidHits++;els.arrivalChip.textContent='IMPACTO CON ASTEROIDE';beep(150,.22);}
     else{state.stats.blackHolesEntered++;els.arrivalChip.textContent='HORIZONTE DE EVENTOS';beep(90,.38);}
@@ -382,9 +382,9 @@
     els.qCount.textContent=ch.kind==='blackhole'?'PORTAL OPCIONAL · RETO AVANZADO':`PREGUNTA ${state.questionIndex+1} / ${questions.length}`;
     els.qBadge.textContent=ch.kind==='blackhole'?'AGUJERO NEGRO · PENALIZACIÓN AL FALLAR':`IMPACTO ASTEROIDE · ${q.badge}`;
     els.challengeRibbon.hidden=false;els.challengeRibbon.className=`challenge-ribbon ${ch.kind}`;
-    els.challengeRibbon.textContent=ch.kind==='blackhole'?'ENTRADA AL AGUJERO NEGRO · ACIERTA PARA SALTAR AL CORREDOR SEGURO':'COLISIÓN CON ASTEROIDE · ACIERTA PARA DESTRUIRLO';
-    els.instruction.textContent=ch.kind==='blackhole'?'Reto avanzado: un error devuelve la nave al campo denso y descuenta 0.20.':'El vuelo está congelado en el punto exacto del impacto. Un error descuenta 0.10.';
-    els.qBody.innerHTML=q.prompt;renderOptions(q);setFeedback(ch.kind==='blackhole'?'Resuelve el reto avanzado para controlar el salto gravitacional.':'Resuelve la prueba para destruir el asteroide y continuar.','neutral');
+    els.challengeRibbon.textContent=ch.kind==='blackhole'?'ENTRADA AL AGUJERO NEGRO · ACIERTA PARA ENTRAR A LA CÁMARA DE TRES ASTROS':'COLISIÓN CON ASTEROIDE · ACIERTA PARA DESTRUIRLO';
+    els.instruction.textContent=ch.kind==='blackhole'?'Reto avanzado: si aciertas entrarás a un espacio especial con tres astros al mismo tiempo; si fallas, solo desaparecerá el agujero negro.':'El vuelo está congelado en el punto exacto del impacto. Un error descuenta 0.10.';
+    els.qBody.innerHTML=q.prompt;renderOptions(q);setFeedback(ch.kind==='blackhole'?'Resuelve el reto avanzado para abrir el portal hacia la cámara de tres astros. Si fallas, únicamente desaparecerá el agujero negro.':'Resuelve la prueba para destruir el asteroide y continuar.','neutral');
     await typeset();if(state.completed)return;
     state.phase='question';questionStart=Date.now();els.gameLayout.classList.remove('flight-mode');els.flightHud.hidden=true;answerLocked=false;
     els.submit.disabled=false;els.hint.disabled=false;requestAnimationFrame(()=>{resizeAll();drawMini(q,performance.now());setTimeout(resizeAll,300);});saveProgress();
@@ -409,12 +409,12 @@
     }else{
       if(correct){
         const reward=q._hintUsed?.06:.10;state.score=clampScore(state.score+reward);state.xp+=120;state.stats.blackHoleSuccess++;
-        state.answers.push(recordAnswer(q,true,value,reward,'Agujero negro'));setFeedback(`Salto gravitacional estabilizado. ${q.explanation}`,'good');markOptions(q,true,value);beep(980,.24);spawnBurst('good');updateHUD();saveProgress();
+        state.answers.push(recordAnswer(q,true,value,reward,'Agujero negro'));setFeedback(`Salto gravitacional estabilizado. Entrarás a una cámara especial donde aparecerán <b>tres astros al mismo tiempo</b>.<br>${q.explanation}`,'good');markOptions(q,true,value);beep(980,.24);spawnBurst('good');updateHUD();saveProgress();
         setTimeout(()=>resolveBlackHole(true),1450);
       }else{
-        const penalty=.20;state.score=Math.max(0,state.score-penalty);state.energy=Math.max(0,state.energy-2);state.stats.blackHolePenalty+=penalty;state.stats.blackHoleFails++;
-        state.answers.push(recordAnswer(q,false,value,-penalty,'Agujero negro'));setFeedback('El portal colapsó: pierdes 0.20 y serás devuelto a una zona de asteroides de alta densidad.','bad');markOptions(q,false,value);beep(95,.36);spawnBurst('bad');updateHUD();saveProgress();
-        setTimeout(()=>resolveBlackHole(false),1650);
+        state.stats.blackHoleFails++;
+        state.answers.push(recordAnswer(q,false,value,0,'Agujero negro'));setFeedback('Respuesta incorrecta: el agujero negro se disipa y desaparece. Continúas la ruta normal sin entrar a la cámara de astros.','bad');markOptions(q,false,value);beep(95,.36);spawnBurst('bad');updateHUD();saveProgress();
+        setTimeout(()=>resolveBlackHole(false),1450);
       }
     }
     if(state.energy<=0){state.energy=2;updateHUD();showModal('Recarga de emergencia','<p>La energía llegó a cero. El sistema recuperó 2 unidades para que la misión continúe. Las penalizaciones de nota permanecen registradas.</p>');}
@@ -436,14 +436,12 @@
   function resolveBlackHole(correct){
     const ch=state.currentChallenge,s=state.space;if(!ch||!s)return;
     s.blackHoles=s.blackHoles.filter(b=>b.id!==ch.objectId);state.blackHoleIndex++;
+    restoreCollisionPoint(ch.snapshot);s.invulnerableUntil=performance.now()+1800;
     if(correct){
-      restoreCollisionPoint(ch.snapshot);s.zone='safe';s.safeUntil=performance.now()+14000;s.invulnerableUntil=performance.now()+1800;s.route+=520;
-      s.asteroids=s.asteroids.filter((_,i)=>i%4===0);while(s.asteroids.length<5)spawnAsteroid(-.4+Math.random()*.9,true);
-      activateFlight('SALTO EXITOSO · CORREDOR DE BAJA DENSIDAD');
+      s.asteroids=[];s.blackHoles=[];s.guidedAstro=null;spawnPortalAstroSet(performance.now());
+      state.currentChallenge=null;hideChallengeForAction();activateFlight('SALTO EXITOSO · CÁMARA DE TRES ASTROS');
     }else{
-      s.zone='dense';s.safeUntil=0;s.asteroids=[];s.blackHoles=[];restoreCollisionPoint(ch.snapshot);state.drone.x=0;state.drone.y=Math.min(0,state.drone.y);state.drone.vx=0;state.drone.vy=0;
-      seedAsteroids(28+s.sector*3);s.invulnerableUntil=performance.now()+2300;s.blackHoleAt=performance.now()+11000;
-      activateFlight('PORTAL FALLIDO · REGRESO AL CAMPO DENSO');
+      state.currentChallenge=null;hideChallengeForAction();s.blackHoleAt=performance.now()+12000+Math.random()*5000;activateFlight('PORTAL FALLIDO · EL AGUJERO NEGRO DESAPARECIÓ');
     }
   }
   function restoreCollisionPoint(snapshot){
@@ -774,14 +772,14 @@
     if(!allowed){showModal('Pantalla completa requerida','<p>La misión necesita toda la pantalla para conservar la visibilidad del combate y de las gráficas matemáticas.</p><p>En Brightspace, abre el recurso en una ventana o marco con permiso de pantalla completa.</p>',[{label:'REINTENTAR',action:()=>{closeModal();launchGame();},primary:true}]);return;}
     state.seed=(Date.now()^Math.floor(Math.random()*1e9))>>>0;questions=NVQuestions.build(state.seed);blackHoleQuestions=NVQuestions.buildBlackHole(state.seed);
     Object.assign(state,{questionIndex:0,score:0,energy:5,integrity:0,xp:0,sectorProgress:[0,0,0,0],answers:[],hints:0,startedAt:new Date(),endedAt:null,disqualified:false,completed:false,phase:'flight',phaseBeforePause:'flight',currentChallenge:null,blackHoleIndex:0,projectiles:[],mathShot:null,rewind:null,lastShotAt:0,world:1,worldStage:'asteroids',lifesaverFlags:{},lifesaverSerial:0});
-    state.stats={asteroidHits:0,asteroidsAvoided:0,asteroidsShot:0,brownDestroyed:0,smallDestroyed:0,mediumDestroyed:0,largeDestroyed:0,shotsFired:0,blackHolesEntered:0,blackHoleSuccess:0,blackHoleFails:0,asteroidPenalty:0,blackHolePenalty:0,brownAsteroidHits:0,brownPenalty:0,questionAsteroidsSpawned:0,blueCorrect:0,blueWrong:0,maxAsteroids:0,distance:0,livesLost:0,rewinds:0,enemiesDestroyed:0,enemyDamage:0,enemyShots:0,lifesavers:0,lifesaverCorrect:0,bossFormsDefeated:0,bossDefeated:false,combatScore:0};
+    state.stats={asteroidHits:0,asteroidsAvoided:0,asteroidsShot:0,brownDestroyed:0,smallDestroyed:0,mediumDestroyed:0,largeDestroyed:0,shotsFired:0,blackHolesEntered:0,blackHoleSuccess:0,blackHoleFails:0,asteroidPenalty:0,blackHolePenalty:0,brownAsteroidHits:0,brownPenalty:0,questionAsteroidsSpawned:0,blueCorrect:0,blueWrong:0,maxAsteroids:0,distance:0,livesLost:0,rewinds:0,enemiesDestroyed:0,enemyDamage:0,enemyShots:0,lifesavers:0,lifesaverCorrect:0,bossFormsDefeated:0,bossDefeated:false,combatScore:0,combatPointsLost:0};
     document.body.classList.add('playing');els.boot.hidden=true;els.game.hidden=false;buildSectorDots();resizeAll();renderQuestion();animate(performance.now());saveProgress();
   }
 
   function showHow(){
     showModal('Cómo jugar',`<ol>
       <li><b>Cuatro mundos:</b> cada sector comienza con un campo muy poblado. Pilota con flechas/WASD y dispara con Espacio, clic o el botón Fuego.</li>
-      <li><b>Asteroides cafés:</b> aparecen en tamaños pequeño, mediano y grande; requieren 1, 2 o 4 impactos. Debes dispararles antes de que golpeen la nave. Cada choque descuenta <b>0.01</b> de la nota.</li>
+      <li><b>Asteroides cafés:</b> aparecen en tamaños pequeño, mediano y grande; requieren 1, 2 o 4 impactos. Debes dispararles antes de que golpeen la nave. Cada choque reduce vida y puntos de combate, pero <b>no modifica la nota</b>.</li>
       <li><b>Asteroides azules:</b> el campo mantiene decenas de asteroides de pregunta simultáneos y contiene pruebas del corte 1. Al colisionar aparece una pregunta: acertar suma <b>0.05</b>; equivocarse resta <b>0.05</b> y quita una vida.</li>
       <li><b>Pista, retroalimentación y continuación:</b> todas las preguntas incluyen pista. Después de responder se muestra la explicación completa y debes pulsar <b>Continuar en la nave</b> para regresar al vuelo.</li>
       <li><b>Fin de mundo:</b> al completar seis pruebas aparecen interceptores. Cada nave destruida suma <b>0.02</b>.</li>
@@ -815,7 +813,7 @@
     els.hint.disabled=true;els.submit.disabled=true;els.qBody.innerHTML='';els.answers.innerHTML='';els.mini.hidden=true;mctx.clearRect(0,0,els.mini.width,els.mini.height);
     els.flightTitle.textContent=message||'CAMPO DE ASTEROIDES';
     els.flightTarget.textContent=`PRUEBAS ${state.sectorProgress[state.space.sector-1]||0}/6`;
-    els.instruction.textContent='Azules: pregunta +0.05/−0.05 · Cafés: dispara para evitar −0.01.';
+    els.instruction.textContent='Azules: activan preguntas · Cafés: dañan vida y puntos, nunca la nota.';
     requestAnimationFrame(()=>{resizeAll();setTimeout(resizeAll,220);});saveProgress();
   }
 
@@ -1053,15 +1051,15 @@
   function updateAsteroidObjects(w,h,dt,t,safe){
     const s=state.space,finalSector=s.sector>=5,rate=safe?.54:(finalSector?.062:Math.max(.072,.132-s.sector*.008)),speedFactor=safe?.70:(finalSector?1.28:1+s.sector*.045);s.route+=dt*190*speedFactor;state.stats.distance+=dt*190*speedFactor;s.spawnAccumulator+=dt;
     let blueCount=s.asteroids.reduce((n,a)=>n+(a.core?1:0),0);
-    while(s.spawnAccumulator>rate&&s.asteroids.length<128){
+    while(s.spawnAccumulator>rate&&s.asteroids.length<64){
       s.spawnAccumulator-=rate;
-      const makeBlue=finalSector?true:(!safe&&blueCount<48&&Math.random()<.44);
+      const makeBlue=finalSector?true:(!safe&&blueCount<24&&Math.random()<.44);
       spawnAsteroid(-.12-Math.random()*.30,false,makeBlue);
       if(makeBlue)blueCount++;
     }
     if(!finalSector&&t>s.blackHoleAt)spawnBlackHole();
-    if(t>s.nextCoreAt&&blueCount<(finalSector?44:30)){
-      const add=Math.min(finalSector?8:6,(finalSector?44:30)-blueCount);
+    if(t>s.nextCoreAt&&blueCount<(finalSector?24:18)){
+      const add=Math.min(finalSector?6:4,(finalSector?24:18)-blueCount);
       for(let i=0;i<add;i++)spawnAsteroid(-.18-i*.075,false,true);
       s.nextCoreAt=t+(finalSector?1700:2300);
     }
@@ -1070,7 +1068,7 @@
     s.asteroids=s.asteroids.filter(a=>a.y<1.25);for(const b of s.blackHoles){b.y+=b.speed*dt;b.rot+=dt*.45;}s.blackHoles=s.blackHoles.filter(b=>b.y<1.24);
     updateProjectiles(w,h,dt,t);state.stats.maxAsteroids=Math.max(state.stats.maxAsteroids,s.asteroids.length);if(t<s.invulnerableUntil)return;
     const sx=w/2+state.drone.x,sy=h*.78+state.drone.y,shipR=Math.max(20,Math.min(w,h)*.034);
-    for(const a of s.asteroids){const ax=a.x*w,ay=a.y*h,ar=a.r*Math.min(w,h);if(Math.hypot(ax-sx,ay-sy)<shipR+ar*.78){if(a.core)triggerCollision('asteroid',a);else{state.score=clampScore(state.score-.01);state.stats.brownAsteroidHits=(state.stats.brownAsteroidHits||0)+1;state.stats.brownPenalty=(state.stats.brownPenalty||0)+.01;addScoreFloat('ASTEROIDE CAFÉ −0.01',a.x,a.y,'damage');a._dead=true;addExplosion(a.x,a.y,a.r,'laser');s.asteroids=s.asteroids.filter(x=>x!==a);s.invulnerableUntil=t+760;beep(145,.12);updateHUD();saveProgress();}return;}}
+    for(const a of s.asteroids){const ax=a.x*w,ay=a.y*h,ar=a.r*Math.min(w,h);if(Math.hypot(ax-sx,ay-sy)<shipR+ar*.78){if(a.core)triggerCollision('asteroid',a);else{const damage=a.size==='large'?1:a.size==='medium'?.75:.5;const scoreBefore=Number(state.score)||0;state.stats.brownAsteroidHits=(state.stats.brownAsteroidHits||0)+1;state.stats.brownDamage=(state.stats.brownDamage||0)+damage;state.stats.brownPenalty=0;damagePlayer(damage,'asteroide café');state.score=Math.max(scoreBefore,Number(state.score)||0);addScoreFloat('ASTEROIDE CAFÉ · NOTA INTACTA',a.x,a.y,'damage');a._dead=true;addExplosion(a.x,a.y,a.r,'laser');s.asteroids=s.asteroids.filter(x=>x!==a);s.invulnerableUntil=t+900;beep(145,.12);updateHUD();saveProgress();}return;}}
     for(const b of s.blackHoles){const bx=b.x*w,by=b.y*h,br=b.r*Math.min(w,h);if(Math.hypot(bx-sx,by-sy)<shipR+br*.62){triggerCollision('blackhole',b);return;}}
   }
 
@@ -1142,9 +1140,21 @@
   }
 
   function damagePlayer(amount,source){
-    if(state.completed||!state.space)return;state.energy=Math.max(0,state.energy-amount);state.stats.enemyDamage+=amount;state.stats.livesLost+=amount;state.space.flashUntil=performance.now()+430;state.space.invulnerableUntil=performance.now()+780;addScoreFloat(`VIDA −${amount.toFixed(2)}`,.5,.72,'damage');beep(120,.16);updateHUD();
+    if(state.completed||!state.space)return;
+    const bossAttack=state.space.stage==='boss'||/jefe|omega/i.test(source||'');
+    const pointLoss=Math.max(bossAttack?18:8,Math.round(amount*(bossAttack?24:18)));
+    state.energy=Math.max(0,state.energy-amount);
+    state.xp=Math.max(0,(state.xp||0)-pointLoss);
+    state.stats.enemyDamage=(state.stats.enemyDamage||0)+amount;
+    state.stats.livesLost=(state.stats.livesLost||0)+amount;
+    state.stats.combatPointsLost=(state.stats.combatPointsLost||0)+pointLoss;
+    state.space.flashUntil=performance.now()+430;
+    state.space.invulnerableUntil=performance.now()+780;
+    addScoreFloat(`VIDA −${amount.toFixed(2)}`,.5,.72,'damage');
+    addScoreFloat(`PUNTOS −${pointLoss}`,.5,.66,'damage');
+    beep(120,.16);updateHUD();
     const combatPhase=state.space.stage==='boss'?'boss':'enemy-wave';if((state.space.stage==='enemies'||state.space.stage==='boss')&&state.energy<=2.5&&!state.currentChallenge){setTimeout(()=>{if(!state.currentChallenge&&state.energy<=2.5&&ACTIVE_COMBAT_PHASES.includes(state.phase))triggerLifesaver(combatPhase);},300);}
-    if(state.energy<=0){state.score=clampScore(state.score-.20);state.energy=2;state.space.enemyProjectiles=[];state.space.invulnerableUntil=performance.now()+2200;toast(`Reinicio de emergencia por ${source}: −0.20 y 2 vidas restauradas.`);updateHUD();}
+    if(state.energy<=0){state.energy=2;state.space.enemyProjectiles=[];state.space.invulnerableUntil=performance.now()+2200;toast(`Reinicio de emergencia por ${source}: se restauraron 2 vidas. La nota no fue modificada.`);updateHUD();}
   }
 
   function awardCombatScore(delta,label,x=.5,y=.5,kind=''){
@@ -1223,7 +1233,7 @@
 
   function updateHUD(){
     els.score.textContent=`${state.score.toFixed(2)} / 5.00`;els.integrity.textContent=`${state.integrity} / 5`;renderEnergy();
-    const level=Math.min(12,1+Math.floor(state.xp/200));els.level.textContent=level;els.xp.textContent=`${state.xp} / ${level*600}`;els.xpFill.style.width=`${Math.min(100,(state.xp%(level*600))/(level*600)*100)}%`;
+    const level=Math.min(12,1+Math.floor(state.xp/200));els.level.textContent=level;els.xp.textContent=`${Math.max(0,Math.round(state.xp||0))} PTS`;els.xpFill.style.width=`${Math.min(100,(state.xp%(level*600))/(level*600)*100)}%`;
     $$('#sectorDots button').forEach((b,i)=>{const target=worldTarget(i+1);b.classList.toggle('complete',state.sectorProgress[i]>=target);b.classList.toggle('active',(state.space?.sector||questions[state.questionIndex]?.sector||5)-1===i);b.title=`${sectorNames[i]}: ${state.sectorProgress[i]}/${target}`;});updateCombatHud();
   }
 
@@ -1231,7 +1241,7 @@
     c.save();c.font='12px Segoe UI';c.textAlign='center';c.textBaseline='middle';for(let i=-5;i<=5;i++){c.strokeStyle=i===0?'rgba(255,255,255,.9)':'rgba(120,190,255,.24)';c.lineWidth=i===0?1.8:1;c.beginPath();c.moveTo(ox+i*s,8);c.lineTo(ox+i*s,h-8);c.moveTo(8,oy+i*s);c.lineTo(w-8,oy+i*s);c.stroke();if(i!==0){c.fillStyle='#bfe7ff';c.fillText(String(i),ox+i*s,oy+14);c.fillText(String(-i),ox-15,oy+i*s);}}c.fillStyle='#fff';c.font='bold 14px Segoe UI';c.fillText('x',w-14,oy-12);c.fillText('y',ox+12,14);c.restore();
   }
 
-  function confirmFinish(){showModal('Finalizar misión',`<p>Tu nota actual es <b>${state.score.toFixed(2)} / 5.00</b>.</p><p>Asteroides destruidos: <b>${state.stats.asteroidsShot||0}</b> · interceptores destruidos: <b>${state.stats.enemiesDestroyed||0}</b> · fases de los jefes finales derrotadas: <b>${state.stats.bossFormsDefeated||0}/4</b>.</p><p>La finalización manual enviará el resultado actual a Brightspace.</p>`,[{label:'CANCELAR',action:closeModal},{label:'FINALIZAR',action:()=>finishMission(true),primary:true}]);}
+  function confirmFinish(){showModal('Finalizar y enviar nota',`<p>Puedes terminar la misión aunque todavía queden mundos o fases pendientes.</p><p>La nota que se enviará a Brightspace es <b>${state.score.toFixed(2)} / 5.00</b>.</p><p>Puntos de combate actuales: <b>${Math.max(0,Math.round(state.xp||0))}</b> · puntos perdidos por ataques: <b>${state.stats.combatPointsLost||0}</b>.</p><p>Esta acción cierra definitivamente el intento y descarga el informe.</p>`,[{label:'CONTINUAR JUGANDO',action:closeModal},{label:'FINALIZAR Y ENVIAR',action:()=>finishMission(true),primary:true}]);}
 
   function saveProgress(){try{const slimSpace=state.space?{sector:state.space.sector,stage:state.space.stage,route:state.space.route,zone:state.space.zone,checkpointRoute:state.space.checkpointRoute}:null;localStorage.setItem('nexoVectorialState',JSON.stringify({...state,space:slimSpace,particles:[],drone:{x:state.drone.x,y:state.drone.y,tilt:state.drone.tilt},currentChallenge:null,flight:null,mathShot:null,rewind:null}));}catch(_e){}NVScorm.saveProgress(state);}
 
@@ -1243,7 +1253,7 @@
       showModal('Bitácora de misión',`<table class="progress-table"><thead><tr><th>Evento</th><th>Reto</th><th>Resultado</th><th>Puntaje</th><th>Tiempo</th></tr></thead><tbody>${recent||'<tr><td colspan="5">Aún no hay eventos.</td></tr>'}</tbody></table>`);
     }
     if(panel==='progress'){
-      showModal('Progreso por mundos',`<table class="progress-table"><thead><tr><th>Mundo</th><th>Pruebas</th><th>Estado</th></tr></thead><tbody>${sectorNames.map((n,i)=>`<tr><td>${i+1}. ${n}</td><td>${state.sectorProgress[i]}/${worldTarget(i+1)}</td><td>${state.sectorProgress[i]>=worldTarget(i+1)?'Campo superado':'En curso'}</td></tr>`).join('')}</tbody></table><p>Asteroides cafés destruidos: <b>${state.stats.brownDestroyed||0}</b> · impactos cafés: <b>${state.stats.brownAsteroidHits||0}</b> (−${(state.stats.brownPenalty||0).toFixed(2)})</p><p>Interceptores destruidos: <b>${state.stats.enemiesDestroyed||0}</b> (+${((state.stats.enemiesDestroyed||0)*.02).toFixed(2)})</p><p>Formas de Omega derrotadas: <b>${state.stats.bossFormsDefeated||0}/4</b> · Salvavidas activados: <b>${state.stats.lifesavers||0}</b></p><p>Nota actual: <b>${state.score.toFixed(2)} / 5.00</b></p>`);
+      showModal('Progreso por mundos',`<table class="progress-table"><thead><tr><th>Mundo</th><th>Pruebas</th><th>Estado</th></tr></thead><tbody>${sectorNames.map((n,i)=>`<tr><td>${i+1}. ${n}</td><td>${state.sectorProgress[i]}/${worldTarget(i+1)}</td><td>${state.sectorProgress[i]>=worldTarget(i+1)?'Campo superado':'En curso'}</td></tr>`).join('')}</tbody></table><p>Asteroides cafés destruidos: <b>${state.stats.brownDestroyed||0}</b> · impactos cafés: <b>${state.stats.brownAsteroidHits||0}</b> (daño de combate, nota intacta)</p><p>Interceptores destruidos: <b>${state.stats.enemiesDestroyed||0}</b> (+${((state.stats.enemiesDestroyed||0)*.02).toFixed(2)})</p><p>Formas de Omega derrotadas: <b>${state.stats.bossFormsDefeated||0}/4</b> · Salvavidas activados: <b>${state.stats.lifesavers||0}</b></p><p>Nota actual: <b>${state.score.toFixed(2)} / 5.00</b></p>`);
     }
     if(panel==='help')showHow();
   }
@@ -1251,7 +1261,7 @@
   function downloadReport(auto){
     const end=state.endedAt||new Date(),duration=Math.max(0,Math.round((end-(state.startedAt||end))/1000));
     const rows=state.answers.map((a,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(a.event||'Prueba')}</td><td>${a.sector}</td><td>${escapeHtml(a.type)}</td><td>${a.correct?'Correcta':'Incorrecta'}</td><td>${a.delta>0?'+':''}${a.delta.toFixed(2)}</td><td>${a.hint?'Sí':'No'}</td><td>${a.timeSec}s</td></tr>`).join('');
-    const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Informe Nexo Vectorial</title><style>body{font-family:Arial;margin:32px;color:#10233a}h1{color:#075985}.hero{background:#071b33;color:white;padding:24px;border-radius:14px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}.m{border:1px solid #8bdcf4;padding:14px;border-radius:10px}.v{font-size:1.4rem;font-weight:bold;color:#075985}table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #ccdce7;text-align:left}th{background:#e9f8ff}.warn{background:#ffe3e9;border-left:5px solid #d61f4c;padding:12px}@media(max-width:760px){.metrics{grid-template-columns:1fr 1fr}}</style></head><body><div class="hero"><h1 style="color:white">Nexo Vectorial — Informe de misión</h1><p>Operación Matriz Cero · Mundos temáticos, interceptores y jefe final · Álgebra Lineal Corte 1</p></div>${state.disqualified?'<div class="warn"><b>Intento anulado por cinco infracciones de integridad. Nota definitiva: 0.00.</b></div>':''}<div class="metrics"><div class="m">Estudiante<div class="v">${escapeHtml(state.student)}</div></div><div class="m">Nota<div class="v">${state.score.toFixed(2)} / 5.00</div></div><div class="m">Duración<div class="v">${formatTime(duration)}</div></div><div class="m">Distancia<div class="v">${Math.round(state.stats.distance||0)} km</div></div><div class="m">Cafés destruidos<div class="v">${state.stats.brownDestroyed||0}</div></div><div class="m">Interceptores<div class="v">${state.stats.enemiesDestroyed||0}</div></div><div class="m">Omega<div class="v">${state.stats.bossFormsDefeated||0}/4</div></div><div class="m">Salvavidas<div class="v">${state.stats.lifesaverCorrect||0}/${(state.stats.lifesavers||0)*2}</div></div></div><h2>Balance de combate</h2><p>Asteroides azules correctos: <b>${state.stats.blueCorrect||0}</b> (+${((state.stats.blueCorrect||0)*.05).toFixed(2)}) · incorrectos: <b>${state.stats.blueWrong||0}</b> (−${((state.stats.blueWrong||0)*.05).toFixed(2)}) · impactos con asteroides cafés: <b>${state.stats.brownAsteroidHits||0}</b> (−${(state.stats.brownPenalty||0).toFixed(2)}) · interceptores: <b>+${((state.stats.enemiesDestroyed||0)*.02).toFixed(2)}</b>.</p><h2>Dominio por mundo</h2><ol>${sectorNames.map((n,i)=>`<li><b>${n}</b>: ${state.sectorProgress[i]}/6 pruebas superadas.</li>`).join('')}</ol><h2>Detalle de desafíos</h2><table><thead><tr><th>#</th><th>Evento</th><th>Mundo</th><th>Tipo</th><th>Resultado</th><th>Cambio</th><th>Pista</th><th>Tiempo</th></tr></thead><tbody>${rows||'<tr><td colspan="8">Sin respuestas registradas.</td></tr>'}</tbody></table><h2>Daño y recuperación</h2><p>Daño recibido de naves: <b>${(state.stats.enemyDamage||0).toFixed(2)}</b> · vidas perdidas totales: <b>${Number(state.stats.livesLost||0).toFixed(2)}</b> · respuestas salvavidas correctas: <b>${state.stats.lifesaverCorrect||0}</b>.</p><h2>Integridad</h2><p>Eventos registrados: ${state.integrity}</p><ul>${state.integrityLog.map(x=>`<li>${new Date(x.time).toLocaleString('es-CO')}: ${escapeHtml(x.reason)}</li>`).join('')||'<li>Sin eventos.</li>'}</ul><p><small>Generado el ${end.toLocaleString('es-CO')}.</small></p></body></html>`;
+    const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Informe Nexo Vectorial</title><style>body{font-family:Arial;margin:32px;color:#10233a}h1{color:#075985}.hero{background:#071b33;color:white;padding:24px;border-radius:14px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}.m{border:1px solid #8bdcf4;padding:14px;border-radius:10px}.v{font-size:1.4rem;font-weight:bold;color:#075985}table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #ccdce7;text-align:left}th{background:#e9f8ff}.warn{background:#ffe3e9;border-left:5px solid #d61f4c;padding:12px}@media(max-width:760px){.metrics{grid-template-columns:1fr 1fr}}</style></head><body><div class="hero"><h1 style="color:white">Nexo Vectorial — Informe de misión</h1><p>Operación Matriz Cero · Mundos temáticos, interceptores y jefe final · Álgebra Lineal Corte 1</p></div>${state.disqualified?'<div class="warn"><b>Intento anulado por cinco infracciones de integridad. Nota definitiva: 0.00.</b></div>':''}<div class="metrics"><div class="m">Estudiante<div class="v">${escapeHtml(state.student)}</div></div><div class="m">Nota<div class="v">${state.score.toFixed(2)} / 5.00</div></div><div class="m">Duración<div class="v">${formatTime(duration)}</div></div><div class="m">Distancia<div class="v">${Math.round(state.stats.distance||0)} km</div></div><div class="m">Cafés destruidos<div class="v">${state.stats.brownDestroyed||0}</div></div><div class="m">Interceptores<div class="v">${state.stats.enemiesDestroyed||0}</div></div><div class="m">Omega<div class="v">${state.stats.bossFormsDefeated||0}/4</div></div><div class="m">Salvavidas<div class="v">${state.stats.lifesaverCorrect||0}/${(state.stats.lifesavers||0)*2}</div></div></div><h2>Balance de combate</h2><p>Asteroides azules correctos: <b>${state.stats.blueCorrect||0}</b> (+${((state.stats.blueCorrect||0)*.05).toFixed(2)}) · incorrectos: <b>${state.stats.blueWrong||0}</b> (−${((state.stats.blueWrong||0)*.05).toFixed(2)}) · impactos con asteroides cafés: <b>${state.stats.brownAsteroidHits||0}</b> (solo vida y puntos; nota intacta) · interceptores: <b>+${((state.stats.enemiesDestroyed||0)*.02).toFixed(2)}</b>.</p><h2>Dominio por mundo</h2><ol>${sectorNames.map((n,i)=>`<li><b>${n}</b>: ${state.sectorProgress[i]}/6 pruebas superadas.</li>`).join('')}</ol><h2>Detalle de desafíos</h2><table><thead><tr><th>#</th><th>Evento</th><th>Mundo</th><th>Tipo</th><th>Resultado</th><th>Cambio</th><th>Pista</th><th>Tiempo</th></tr></thead><tbody>${rows||'<tr><td colspan="8">Sin respuestas registradas.</td></tr>'}</tbody></table><h2>Daño, puntos y recuperación</h2><p>Daño recibido de naves: <b>${(state.stats.enemyDamage||0).toFixed(2)}</b> · vidas perdidas totales: <b>${Number(state.stats.livesLost||0).toFixed(2)}</b> · puntos de combate actuales: <b>${Math.max(0,Math.round(state.xp||0))}</b> · puntos perdidos por ataques: <b>${state.stats.combatPointsLost||0}</b> · respuestas salvavidas correctas: <b>${state.stats.lifesaverCorrect||0}</b>.</p><p><b>Importante:</b> los disparos y embestidas de enemigos y jefes reducen vida y puntos de combate, pero no descuentan nota académica.</p><h2>Integridad</h2><p>Eventos registrados: ${state.integrity}</p><ul>${state.integrityLog.map(x=>`<li>${new Date(x.time).toLocaleString('es-CO')}: ${escapeHtml(x.reason)}</li>`).join('')||'<li>Sin eventos.</li>'}</ul><p><small>Generado el ${end.toLocaleString('es-CO')}.</small></p></body></html>`;
     const blob=new Blob([html],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`Informe_Nexo_Vectorial_${safeName(state.student)}_${new Date().toISOString().slice(0,10)}.html`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);if(!auto)toast('Informe HTML generado.');
   }
 
@@ -1265,6 +1275,36 @@
     {id:4,name:'NIVEL 4 · DETERMINANTES Y SISTEMAS',scene:3,questions:8,topics:[{id:'m22-systems',label:'Determinantes y sistemas 2×2'},{id:'m33-systems',label:'Determinantes, sistemas 3×3 y Gauss–Jordan'}]},
     {id:5,name:'NIVEL 5 · NÚCLEO FINAL',scene:4,questions:10,topics:[{id:'mixed-boss',label:'Retos mixtos multi-etapa'},{id:'gauss-boss',label:'Gauss–Jordan, modelación y jefes finales'}]}
   ];
+
+  function sourceWorldForSector(sector){
+    const seq=Math.max(1,Number(sector)||1);
+    return Number(state.selectedWorlds?.[seq-1]||questions.find(q=>q.sector===seq)?.sourceWorld||seq);
+  }
+  function allowedTopicsForSector(sector){
+    const sourceWorld=sourceWorldForSector(sector),def=WORLD_DEFINITIONS.find(x=>x.id===sourceWorld);
+    if(!def)return new Set();
+    const selected=new Set(state.selectedTopics||[]),worldTopics=def.topics.map(x=>x.id),active=worldTopics.filter(id=>selected.has(id));
+    return new Set(active.length?active:worldTopics);
+  }
+  function questionMatchesSectorWorld(q,sector){
+    if(!q)return false;
+    const seq=Math.max(1,Number(sector)||1),sourceWorld=sourceWorldForSector(seq),allowed=allowedTopicsForSector(seq);
+    const qWorld=Number(q.sourceWorld||q.level||0);
+    return Number(q.sector)===seq&&qWorld===sourceWorld&&(!q.topic||!allowed.size||allowed.has(q.topic));
+  }
+  function questionsForSectorWorld(pool,sector){
+    return (pool||[]).filter(q=>questionMatchesSectorWorld(q,sector));
+  }
+  function fallbackQuestionForSectorWorld(sector,preferBoss=false){
+    const seq=Math.max(1,Number(sector)||1),sourceWorld=sourceWorldForSector(seq),allowed=allowedTopicsForSector(seq);
+    const seed=((state.seed||20260731)^Math.imul(sourceWorld,0x9E3779B9)^Math.imul((state.questionVariantSerial||0)+1,0x85EBCA6B))>>>0;
+    const builders=preferBoss?[NVQuestions.buildBoss,NVQuestions.buildBlackHole,NVQuestions.build]:[NVQuestions.buildBlackHole,NVQuestions.buildBoss,NVQuestions.build];
+    for(const build of builders){
+      const raw=(typeof build==='function'?build(seed):[]).filter(q=>Number(q.level)===sourceWorld&&(!q.topic||!allowed.size||allowed.has(q.topic)));
+      if(raw.length){const q=cloneQuestion(raw[(state.questionVariantSerial||0)%raw.length]);q.sourceWorld=sourceWorld;q.scene=WORLD_DEFINITIONS.find(x=>x.id===sourceWorld)?.scene||q.scene;q.sector=seq;return q;}
+    }
+    return null;
+  }
 
   function selectedTopicSet(){return new Set($$('.topic-check:checked').map(x=>x.value));}
   function worldTarget(sector){return Number(state.worldQuestionTotals?.[sector-1]||WORLD_DEFINITIONS[sector-1]?.questions||8);}
@@ -1317,12 +1357,12 @@
       const seq=index+1,activeTopicIds=def.topics.filter(topic=>selected.has(topic.id)).map(topic=>topic.id);
       let pool=bank.filter(q=>q.level===def.id&&activeTopicIds.includes(q.topic));
       if(!pool.length)pool=bank.filter(q=>q.level===def.id);
-      const chosen=progressivePick(pool,def.questions,seed+def.id*1013);
-      chosen.forEach(q=>{q.sourceId=q.id;q.sourceWorld=def.id;q.scene=def.scene;q.sector=seq;q.id=nextId++;q.topicLabel=def.topics.filter(x=>activeTopicIds.includes(x.id)).map(x=>x.label).join(' · ');mission.push(q);});
+      const chosen=progressivePick(pool,def.questions,seed+def.id*1013),usedMainPrompts=new Set();
+      chosen.forEach((q,i)=>{let fresh=q,attempt=0;do{fresh=NVQuestions.regenerate?.(q,(seed^Math.imul(def.id,0x9E3779B9)^Math.imul(i+1,0x85EBCA6B)^Math.imul(attempt+1,0x27D4EB2D))>>>0)||q;attempt++;}while(usedMainPrompts.has(fresh.prompt)&&attempt<32);q=fresh;usedMainPrompts.add(q.prompt);q.sourceId=q.id;q.sourceWorld=def.id;q.scene=def.scene;q.sector=seq;q.id=nextId++;q.topicLabel=def.topics.filter(x=>activeTopicIds.includes(x.id)).map(x=>x.label).join(' · ');mission.push(q);});
       let hard=hardBank.filter(q=>q.level===def.id&&(activeTopicIds.includes(q.topic)||!q.topic));if(!hard.length)hard=hardBank.filter(q=>q.level===def.id);
-      progressivePick(hard,Math.max(2,hard.length),seed+def.id*2039).forEach((q,i)=>{q.sourceId=q.id;q.sourceWorld=def.id;q.scene=def.scene;q.sector=seq;q.id=1000+seq*20+i;hardMission.push(q);});
-      const bossCount=def.id===5?4:3;const bosses=progressivePick(bossBank.filter(q=>q.level===def.id),bossCount,seed+def.id*4079);
-      bosses.forEach((q,i)=>{q.sourceId=q.id;q.sourceWorld=def.id;q.scene=def.scene;q.sector=seq;q.id=2000+seq*20+i;bossMission.push(q);});
+      const usedHardPrompts=new Set();progressivePick(hard,Math.max(4,hard.length),seed+def.id*2039).forEach((q,i)=>{let fresh=q,attempt=0;do{fresh=NVQuestions.regenerate?.(q,(seed^Math.imul(def.id,0xC2B2AE35)^Math.imul(i+17,0x27D4EB2D)^Math.imul(attempt+1,0x85EBCA6B))>>>0)||q;attempt++;}while(usedHardPrompts.has(fresh.prompt)&&attempt<32);q=fresh;usedHardPrompts.add(q.prompt);q.sourceId=q.id;q.sourceWorld=def.id;q.scene=def.scene;q.sector=seq;q.id=1000+seq*20+i;hardMission.push(q);});
+      const bossCount=def.id===5?4:3;const bosses=progressivePick(bossBank.filter(q=>q.level===def.id),bossCount,seed+def.id*4079),usedBossPrompts=new Set();
+      bosses.forEach((q,i)=>{let fresh=q,attempt=0;do{fresh=NVQuestions.regenerate?.(q,(seed^Math.imul(def.id,0x165667B1)^Math.imul(i+31,0xD3A2646C)^Math.imul(attempt+1,0x9E3779B9))>>>0)||q;attempt++;}while(usedBossPrompts.has(fresh.prompt)&&attempt<32);q=fresh;usedBossPrompts.add(q.prompt);q.sourceId=q.id;q.sourceWorld=def.id;q.scene=def.scene;q.sector=seq;q.id=2000+seq*20+i;bossMission.push(q);});
     });
     return{activeDefs,mission,hardMission,bossMission};
   }
@@ -1361,7 +1401,7 @@
     questions=configured.mission;blackHoleQuestions=configured.hardMission;bossQuestions=configured.bossMission;sectorNames=configured.activeDefs.map(x=>x.name);
     const grading=buildGradingPlan(questions,configured.activeDefs,selected);questions.forEach(q=>q.gradeValue=grading.questionValues[q.id]);
     Object.assign(state,{questionIndex:0,score:0,energy:5,integrity:0,xp:0,sectorProgress:Array(sectorNames.length).fill(0),worldQuestionTotals:configured.activeDefs.map(x=>x.questions||4),selectedTopics:[...selected],selectedMainTopics:configured.activeDefs.map(x=>mainTopicTitle(x)),selectedWorlds:configured.activeDefs.map(x=>x.id),answers:[],hints:0,startedAt:new Date(),endedAt:null,disqualified:false,completed:false,phase:'flight',phaseBeforePause:'flight',currentChallenge:null,blackHoleIndex:0,projectiles:[],mathShot:null,rewind:null,lastShotAt:0,world:1,worldStage:'asteroids',lifesaverFlags:{},lifesaverSerial:0,weaponBoostUntil:0,securedUnits:0,securedLevels:0,bossQuestionSerial:0,grading});
-    state.stats={asteroidHits:0,asteroidsAvoided:0,asteroidsShot:0,brownDestroyed:0,smallDestroyed:0,mediumDestroyed:0,largeDestroyed:0,shotsFired:0,blackHolesEntered:0,blackHoleSuccess:0,blackHoleFails:0,asteroidPenalty:0,blackHolePenalty:0,brownAsteroidHits:0,brownPenalty:0,questionAsteroidsSpawned:0,blueCorrect:0,blueWrong:0,maxAsteroids:0,distance:0,livesLost:0,rewinds:0,enemiesDestroyed:0,enemyDamage:0,enemyShots:0,lifesavers:0,lifesaverCorrect:0,bossFormsDefeated:0,bossDefeated:false,combatScore:0};
+    state.stats={asteroidHits:0,asteroidsAvoided:0,asteroidsShot:0,brownDestroyed:0,smallDestroyed:0,mediumDestroyed:0,largeDestroyed:0,shotsFired:0,blackHolesEntered:0,blackHoleSuccess:0,blackHoleFails:0,asteroidPenalty:0,blackHolePenalty:0,brownAsteroidHits:0,brownPenalty:0,questionAsteroidsSpawned:0,blueCorrect:0,blueWrong:0,maxAsteroids:0,distance:0,livesLost:0,rewinds:0,enemiesDestroyed:0,enemyDamage:0,enemyShots:0,lifesavers:0,lifesaverCorrect:0,bossFormsDefeated:0,bossDefeated:false,combatScore:0,combatPointsLost:0};
     document.body.classList.add('playing');els.boot.hidden=true;els.game.hidden=false;buildSectorDots();resizeAll();renderQuestion();animate(performance.now());saveProgress();
   }
 
@@ -1377,7 +1417,7 @@
   function activateFlight(message){
     const q=questions[state.questionIndex];if(state.completed||!state.space)return;state.phase='flight';state.worldStage='asteroids';state.space.stage='asteroids';state.currentChallenge=null;state.mathShot=null;state.rewind=null;answerLocked=true;selected=null;pendingContinueAction=null;if(els.continue){els.continue.hidden=true;els.continue.disabled=true;}
     hideQuestionPanel();bossHud.hidden=true;els.flightHud.hidden=false;els.arrivalChip.hidden=true;els.challengeRibbon.hidden=true;els.hint.disabled=true;els.submit.disabled=true;els.qBody.innerHTML='';els.answers.innerHTML='';els.mini.hidden=true;mctx.clearRect(0,0,els.mini.width,els.mini.height);
-    const finalSector=state.space.sector>=5,qValue=q?mainQuestionValue(q):0;els.flightTitle.textContent=message||(finalSector?'CAMPO DE COMETAS ROJOS':'CAMPO DE ASTEROIDES');els.flightTarget.textContent=`PRUEBAS ${state.sectorProgress[state.space.sector-1]||0}/${worldTarget(state.space.sector)}`;els.instruction.textContent=finalSector?`Cometas rojos: todos activan preguntas. Próxima prueba hasta +${qValue.toFixed(2)}.`:`Azules: valor según tema, próxima hasta +${qValue.toFixed(2)} · Cafés: evita −0.01.`;requestAnimationFrame(()=>{resizeAll();setTimeout(resizeAll,220);});saveProgress();
+    const finalSector=state.space.sector>=5,qValue=q?mainQuestionValue(q):0;els.flightTitle.textContent=message||(finalSector?'CAMPO DE COMETAS ROJOS':'CAMPO DE ASTEROIDES');els.flightTarget.textContent=`PRUEBAS ${state.sectorProgress[state.space.sector-1]||0}/${worldTarget(state.space.sector)}`;els.instruction.textContent=finalSector?`Cometas rojos: todos activan preguntas. Próxima prueba hasta +${qValue.toFixed(2)}.`:`Azules: valor según tema, próxima hasta +${qValue.toFixed(2)} · Cafés: solo reducen vida y puntos; la nota no cambia.`;requestAnimationFrame(()=>{resizeAll();setTimeout(resizeAll,220);});saveProgress();
   }
 
   async function revealChallenge(){
@@ -1439,12 +1479,12 @@
   }
 
   function updateHUD(){
-    els.score.textContent=`${state.score.toFixed(2)} / 5.00`;els.integrity.textContent=`${state.integrity} / 5`;renderEnergy();const level=Math.min(12,1+Math.floor(state.xp/200));els.level.textContent=level;els.xp.textContent=`${state.xp} / ${level*600}`;els.xpFill.style.width=`${Math.min(100,(state.xp%(level*600))/(level*600)*100)}%`;
+    els.score.textContent=`${state.score.toFixed(2)} / 5.00`;els.integrity.textContent=`${state.integrity} / 5`;renderEnergy();const level=Math.min(12,1+Math.floor(state.xp/200));els.level.textContent=level;els.xp.textContent=`${Math.max(0,Math.round(state.xp||0))} PTS`;els.xpFill.style.width=`${Math.min(100,(state.xp%(level*600))/(level*600)*100)}%`;
     $$('#sectorDots button').forEach((b,i)=>{b.classList.toggle('complete',state.sectorProgress[i]>=worldTarget(i+1));b.classList.toggle('active',(state.space?.sector||questions[state.questionIndex]?.sector||sectorNames.length)-1===i);b.title=`${sectorNames[i]}: ${state.sectorProgress[i]}/${worldTarget(i+1)}`;});updateCombatHud();
   }
 
   function finishMission(manual){
-    if(state.completed&&!state.disqualified)return;state.completed=true;state.endedAt=new Date();const status=state.disqualified?'failed':(state.score>=3?'passed':'failed');NVScorm.finish(state.disqualified?0:state.score,status,manual?'manual-finish':'completed');downloadReport(true);closeModal();const recovered=state.sectorProgress.filter((x,i)=>x>=worldTarget(i+1)).length;showModal('Misión finalizada',`<p>Nota enviada: <b>${state.score.toFixed(2)} / 5.00</b></p><p>Mundos superados: <b>${recovered}/${sectorNames.length}</b> · Puntaje asegurado: <b>${securedUnits().toFixed(2)}</b></p><p><b>Esquema aplicado:</b> ${gradingText()}</p><p>Las escuadras y la nave grande final se incluyeron aunque la selección temática fuera parcial.</p><p>El informe HTML se descargó automáticamente.</p>`,[{label:'CERRAR',action:closeModal,primary:true}]);updateHUD();
+    if(state.completed&&!state.disqualified)return;state.completed=true;state.endedAt=new Date();const status=state.disqualified?'failed':(state.score>=3?'passed':'failed');NVScorm.finish(state.disqualified?0:state.score,status,manual?'manual-finish':'completed');downloadReport(true);closeModal();const recovered=state.sectorProgress.filter((x,i)=>x>=worldTarget(i+1)).length;showModal('Misión finalizada',`<p>Nota enviada: <b>${state.score.toFixed(2)} / 5.00</b></p><p>Mundos superados: <b>${recovered}/${sectorNames.length}</b> · Puntaje asegurado: <b>${securedUnits().toFixed(2)}</b></p><p><b>Esquema aplicado:</b> ${gradingText()}</p><p>Puntos de combate finales: <b>${Math.max(0,Math.round(state.xp||0))}</b>. Los impactos de enemigos y jefes no redujeron la nota académica.</p><p>Las escuadras y la nave grande final se incluyeron aunque la selección temática fuera parcial.</p><p>El informe HTML se descargó automáticamente.</p>`,[{label:'CERRAR',action:closeModal,primary:true}]);updateHUD();
   }
 
   function recommendation(){const ratios=state.sectorProgress.map((x,i)=>x/worldTarget(i+1)),min=Math.min(...ratios),i=ratios.indexOf(min);return min>=.8?'Desempeño sólido en los temas seleccionados. Refuerza la explicación escrita de tus procedimientos.':`Conviene reforzar ${sectorNames[i].toLowerCase()}, especialmente mediante ejercicios breves sin pista y revisión de los errores registrados.`;}
@@ -1453,7 +1493,7 @@
     if(panel==='mission')return;if(panel==='log'){const recent=state.answers.slice(-12).reverse().map(a=>`<tr><td>${escapeHtml(a.event||'Prueba')}</td><td>${a.id}</td><td>${a.correct?'✓':'✗'}</td><td>${a.delta>0?'+':''}${a.delta.toFixed(2)}</td><td>${a.timeSec}s</td></tr>`).join('');showModal('Bitácora de misión',`<table class="progress-table"><thead><tr><th>Evento</th><th>Reto</th><th>Resultado</th><th>Puntaje</th><th>Tiempo</th></tr></thead><tbody>${recent||'<tr><td colspan="5">Aún no hay eventos.</td></tr>'}</tbody></table>`);}
     if(panel==='progress'){
       const rows=sectorNames.map((n,i)=>{const done=state.sectorProgress[i]>=worldTarget(i+1),active=(state.space?.sector||1)===i+1;return `<tr class="${done?'world-complete':active?'world-active':''}"><td><strong>Mundo ${i+1}</strong><br><small>${escapeHtml(mainTopicTitle({name:n}))}</small></td><td>${state.sectorProgress[i]}/${worldTarget(i+1)}</td><td>${done?'Superado':active?'En curso':'Pendiente'}</td></tr>`;}).join('');
-      showModal(`Progreso · ${sectorNames.length} mundos seleccionados`,`<div class="selected-world-count"><strong>${sectorNames.length}</strong><span>mundos de la campaña</span></div><table class="progress-table selected-world-progress"><thead><tr><th>Mundo seleccionado</th><th>Pruebas</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table><p>La campaña muestra únicamente los <b>${sectorNames.length} temas principales elegidos</b>. Los demás temas no aparecen en este intento.</p><p><b>Calificación:</b> ${gradingText()}</p><p>Puntaje asegurado: <b>${securedUnits().toFixed(2)}</b> · Nota actual: <b>${state.score.toFixed(2)} / 5.00</b></p>`);
+      showModal(`Progreso · ${sectorNames.length} mundos seleccionados`,`<div class="selected-world-count"><strong>${sectorNames.length}</strong><span>mundos de la campaña</span></div><table class="progress-table selected-world-progress"><thead><tr><th>Mundo seleccionado</th><th>Pruebas</th><th>Estado</th></tr></thead><tbody>${rows}</tbody></table><p>La campaña muestra únicamente los <b>${sectorNames.length} temas principales elegidos</b>. Los demás temas no aparecen en este intento.</p><p><b>Calificación:</b> ${gradingText()}</p><p>Puntaje asegurado: <b>${securedUnits().toFixed(2)}</b> · Nota actual: <b>${state.score.toFixed(2)} / 5.00</b></p><p>Puntos de combate: <b>${Math.max(0,Math.round(state.xp||0))}</b> · perdidos por ataques: <b>${state.stats.combatPointsLost||0}</b>. Estos puntos no modifican la nota.</p>`);
     }
     if(panel==='help')showHow();
   }
@@ -1586,12 +1626,12 @@
     const integrityRows=state.integrityLog.map((x,i)=>`<tr><td>${i+1}</td><td>${new Date(x.time).toLocaleString('es-CO')}</td><td><strong>${escapeHtml(x.reason||'Incidencia')}</strong>${x.detail?`<br><span class="report-muted">${escapeHtml(x.detail)}</span>`:''}</td><td>${escapeHtml(x.effect||'')||reportIntegrityEffect(i)}</td></tr>`).join('');
     const weakest=[...topicRows].filter(t=>t.total).sort((a,b)=>a.pct-b.pct)[0],insight=state.disqualified?'<div class="report-insight critical"><strong>Lectura rápida:</strong> el intento fue anulado al alcanzar la quinta incidencia de integridad.</div>':weakest&&weakest.pct<70?`<div class="report-insight warning"><strong>Prioridad de mejora:</strong> ${escapeHtml(weakest.label)} presenta ${weakest.pct}% de precisión. Conviene repetir los procedimientos sin pista y verificar cada resultado.</div>`:'<div class="report-insight positive"><strong>Fortaleza:</strong> los temas evaluados muestran un desempeño global sólido. Mantén la práctica y explica cada procedimiento por escrito.</div>';
     const cards=state.answers.map(reportQuestionCard).join('');
-    const gradingFormula=`\\[\\text{Nota}=\\underbrace{4.00}_{\\text{temas seleccionados}}+\\underbrace{0.40}_{\\text{escuadras}}+\\underbrace{0.60}_{\\text{jefes finales}},\\qquad 0\\leq \\text{Nota}\\leq 5.00.\\]`;
+    const gradingFormula=`\\[\\text{Piso tras }k\\text{ mundos de }m=\\frac{5k}{m},\\qquad \\text{campaña completa}=5.00.\\]\\[\\text{Puntaje interno}=4.00\\text{ en preguntas}+0.40\\text{ en escuadras}+0.60\\text{ en jefes.}\\]`;
     let mathjaxSource='';try{const response=await fetch('mathjax-tex-svg.js');if(response.ok)mathjaxSource=(await response.text()).split('</script').join('<\\/script');}catch(_e){}
     const mathLoader=mathjaxSource?`<script>${mathjaxSource}<\/script>`:'<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg-full.js"><\/script>';
     const css=`*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#eef4fc;color:#10243d;font-family:Georgia,"Times New Roman",serif;line-height:1.58}.standalone-report-shell{width:min(1080px,calc(100% - 28px));margin:22px auto 58px}.standalone-report-note{margin:0 0 14px;padding:11px 15px;border-radius:14px;background:#0c3b73;color:#fff;text-align:center;font:800 13px/1.4 Arial,sans-serif}.standalone-report-tools{position:sticky;top:8px;z-index:20;display:flex;justify-content:flex-end;gap:10px;margin:0 0 14px;padding:10px;border:1px solid #c9d9ee;border-radius:16px;background:rgba(247,251,255,.94);backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(8,35,74,.08)}.standalone-report-tools button{border:0;border-radius:12px;padding:9px 14px;background:#082d76;color:#fff;font-family:Arial,sans-serif;font-weight:800;cursor:pointer}.standalone-report-tools button.secondary{background:#e4edf9;color:#143a72}.adventure-report{width:100%;margin:0 auto}.adventure-report *{box-sizing:border-box;max-width:100%}.adventure-hero,.adventure-section,.question-card{background:#fff;border:1px solid #dfe8f5;border-radius:22px;padding:24px;margin:20px 0;box-shadow:0 10px 28px rgba(8,35,74,.07)}.adventure-hero{background:linear-gradient(145deg,#031327,#073d72 58%,#087f95);color:#fff;text-align:center}.hero-icon{font-size:58px}.adventure-hero h1{margin:8px 0;color:#6ff4ff;font-size:clamp(2rem,5vw,4rem)}.adventure-hero p{margin:5px 0;font-weight:700}.adventure-report h2{margin:0 0 16px;color:#062f8a;border-bottom:3px solid #dfe8f5;padding-bottom:8px;font-size:clamp(1.45rem,3vw,2rem)}.adventure-report h3,.adventure-report h4{color:#0a357d}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0 16px}.metric{background:#082d76;color:#fff;border-radius:16px;padding:16px}.metric b{display:block;font-size:1.7rem;color:#6ff4ff}.metric span{font-family:Arial,sans-serif;font-size:.86rem;font-weight:800}.report-insight{margin-top:14px;padding:13px 15px;border-radius:14px;border-left:6px solid #50709c;background:#eef4fb}.report-insight.positive{border-color:#15945f;background:#e8f8f0}.report-insight.warning{border-color:#d49a12;background:#fff7da}.report-insight.critical{border-color:#c92c4c;background:#ffecef}.adventure-report table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden}.adventure-report td,.adventure-report th{border-bottom:1px solid #e7edf5;padding:10px;text-align:left;vertical-align:top}.adventure-report th{background:#062f8a;color:#fff;font-family:Arial,sans-serif}.topic-progress-list{display:grid;gap:11px;margin-top:18px}.report-bar-label{display:flex;justify-content:space-between;gap:12px;font-family:Arial,sans-serif}.report-bar{height:14px;border-radius:999px;background:#dce7f4;overflow:hidden}.report-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#0d6fe8,#20ad71)}.formula-grid,.twocol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.formula-block{background:#fbfdff;border:1px solid #dfe8f5;border-top:4px solid #1769d2;border-radius:16px;padding:14px}.latex,.solution,.hint-report{background:#f7fbff;border:1px solid #dfe8f5;border-radius:14px;padding:13px;margin:10px 0;overflow-x:auto}.hint-report{background:#fff8d5;border-color:#e5c760}.hint-report.used{border-left:6px solid #d5a625}.hint-report.unused{background:#f7f9fc;border-color:#ccd8e6;border-left:6px solid #879bb5}.solution{background:#f4f9ff;border-left:6px solid #1769d2}.qtop{display:flex;gap:12px;align-items:center}.qtop>span{width:42px;height:42px;min-width:42px;border-radius:50%;display:grid;place-items:center;background:#062f8a;color:#fff;font-family:Arial,sans-serif;font-weight:900}.qtop>div{min-width:0;flex:1}.qtop h3{margin:0}.qtop p{margin:2px 0 0;color:#5c6f8c}.qtop>b{margin-left:auto;padding:8px 13px;border-radius:999px;white-space:nowrap;font-family:Arial,sans-serif}.qtop .ok{background:#e4f8ee;color:#0b754f}.qtop .bad{background:#ffe7ed;color:#a80f32}.question-footer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.question-footer-grid span{padding:10px 12px;background:#eef4ff;border-radius:12px}.question-prompt-report{font-size:1.08rem}.question-graphic{margin:12px auto;width:100%;max-width:780px;border:2px solid #7eaee5;border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 10px 24px rgba(31,83,148,.1)}.question-graphic svg{display:block;width:100%;height:auto}.question-graphic figcaption{padding:8px 12px;background:#eff6ff;color:#174a88;text-align:center;font:800 .8rem/1.35 Arial,sans-serif}.math-display-shell{display:block;width:100%;margin:.65rem 0;padding:.72rem 1rem;border:1px solid #bfd4ef;border-left:6px solid #1769d2;border-radius:14px;background:linear-gradient(180deg,#fbfdff,#edf5ff);overflow-x:auto;text-align:center}.math-display-compact{padding:.55rem .78rem;border-left-width:4px}.choice-mx{display:flex;min-height:2rem;align-items:center;justify-content:center;text-align:center}.adventure-report mjx-container{font-size:116%!important;color:#061f43!important;max-width:100%;overflow-x:auto;overflow-y:hidden}.formula-latex mjx-container{font-size:132%!important}.question-prompt-report mjx-container{font-size:124%!important}mjx-container[jax="SVG"]>svg{overflow:visible;max-width:100%;height:auto;shape-rendering:geometricPrecision}.adventure-footer{text-align:right;color:#667;margin:20px 4px}@media(max-width:780px){.standalone-report-shell{width:calc(100% - 16px);margin-top:8px}.standalone-report-tools{position:static;display:grid;grid-template-columns:1fr 1fr}.metrics,.twocol,.formula-grid,.question-footer-grid{grid-template-columns:1fr}.adventure-hero,.adventure-section,.question-card{padding:16px}.qtop{align-items:flex-start;flex-wrap:wrap}.qtop>b{margin-left:54px}}@media print{@page{size:auto;margin:13mm}body{background:#fff}.standalone-report-shell{width:100%;margin:0}.standalone-report-note,.standalone-report-tools{display:none!important}.adventure-hero,.adventure-section,.question-card{box-shadow:none!important}.adventure-report h2,.qtop{break-after:avoid}.formula-block,.question-graphic{break-inside:avoid}}`;
     const mathConfig=`<script>const __b=String.fromCharCode(92);window.MathJax={tex:{inlineMath:[[__b+'(',__b+')']],displayMath:[[__b+'[',__b+']']],processEscapes:true,processEnvironments:true,packages:{'[+]':['ams']},tags:'none',maxBuffer:40960},svg:{fontCache:'local',scale:1.14,minScale:.78,mtextInheritFont:false,merrorInheritFont:true,displayAlign:'center',internalSpeechTitles:false},options:{enableMenu:false,skipHtmlTags:['script','noscript','style','textarea','pre','code'],renderActions:{addMenu:[]}},startup:{typeset:false}};<\/script>`;
-    const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>Informe final · ${escapeHtml(state.student)} · Nexo Vectorial</title><style>${css}</style>${mathConfig}${mathLoader}</head><body><main class="standalone-report-shell"><div class="standalone-report-note">Informe HTML autónomo generado por Nexo Vectorial · MathJax SVG local · Compatible con impresión y guardado como PDF.</div><nav class="standalone-report-tools"><button type="button" onclick="window.print()">Imprimir / Guardar PDF</button><button type="button" class="secondary" onclick="window.scrollTo({top:0,behavior:'smooth'})">Volver al inicio</button></nav><div class="adventure-report"><section class="adventure-hero"><div class="hero-icon">🚀∥A∥</div><h1>Informe Nexo Vectorial</h1><p>Operación Matriz Cero · Álgebra Lineal · Corte 1</p><p>${end.toLocaleString('es-CO')}</p></section><section class="adventure-section"><h2>Resumen de misión</h2><div class="metrics"><div class="metric"><b>${state.score.toFixed(2)}</b><span>Nota final / 5.00</span></div><div class="metric"><b>${securedUnits().toFixed(2)}</b><span>Puntaje asegurado</span></div><div class="metric"><b>${correct}/${academic.length}</b><span>Aciertos académicos</span></div><div class="metric"><b>${accuracy}%</b><span>Precisión académica</span></div><div class="metric"><b>${state.integrity}</b><span>Incidencias de integridad</span></div><div class="metric"><b>${formatTime(duration)}</b><span>Duración</span></div></div><p><strong>Estudiante:</strong> ${escapeHtml(state.student)} · <strong>Estado:</strong> ${state.disqualified?'Intento anulado por integridad':state.score>=3?'Misión aprobada':'Misión no aprobada'} · <strong>SCORM:</strong> nota enviada a Brightspace al finalizar.</p><p><strong>Temas principales seleccionados:</strong> ${(state.selectedMainTopics||[]).map(escapeHtml).join(', ')||'Ninguno registrado'}.</p><p><strong>Subtemas incluidos:</strong> ${selectedTopics.map(t=>escapeHtml(t.label)).join(', ')||'Ninguno registrado'}.</p><p><strong>Combate:</strong> ${state.stats.brownDestroyed||0} asteroides cafés destruidos · ${state.stats.enemiesDestroyed||0} naves destruidas · ${state.stats.bossFormsDefeated||0}/4 fases finales superadas · ${state.stats.astrosCorrect||0} astros brillantes superados (${state.stats.astroQuestionsAdvanced||0} pruebas equivalentes).</p>${insight}</section><section class="adventure-section"><h2>Esquema de calificación</h2><p>${escapeHtml(gradingText())}. La ponderación académica se ajustó automáticamente a los temas seleccionados, pero las escuadras y la nave grande final fueron obligatorias.</p><div class="latex formula-latex">${gradingFormula}</div><div class="twocol"><div class="formula-block"><h3>Distribución</h3><ul><li><strong>Temas:</strong> ${Number(state.grading?.topicPool||4).toFixed(2)} puntos.</li><li><strong>Escuadras:</strong> ${Number(state.grading?.fleetPool||.4).toFixed(2)} puntos.</li><li><strong>Jefes finales:</strong> ${Number(state.grading?.finalBossPool||.6).toFixed(2)} puntos.</li></ul></div><div class="formula-block"><h3>Reglas</h3><ul><li>Una pista conserva el 75% del valor de la pregunta.</li><li>Cada nivel puede asegurar hasta una unidad acumulada.</li><li>La quinta incidencia de integridad anula el intento.</li></ul></div></div></section><section class="adventure-section"><h2>Integridad de la sesión</h2><p>El registro identifica salidas de pantalla completa, cambios de pestaña o minimización, pérdida de foco, clic derecho, copia/corte, recarga, navegación del navegador, captura y atajos restringidos.</p><table><thead><tr><th>#</th><th>Fecha y hora</th><th>Incidencia</th><th>Efecto</th></tr></thead><tbody>${integrityRows||'<tr><td colspan="4">Sin incidencias registradas.</td></tr>'}</tbody></table>${state.disqualified?'<div class="report-insight critical"><strong>Resultado:</strong> el intento fue anulado automáticamente en la quinta incidencia y la nota final quedó en 0.00.</div>':'<div class="report-insight positive"><strong>Resultado:</strong> no se alcanzó el umbral de anulación.</div>'}</section><section class="adventure-section"><h2>Desempeño por tema</h2><table><thead><tr><th>Tema evaluado</th><th>Aciertos</th><th>Porcentaje</th><th>Balance de puntos</th></tr></thead><tbody>${topicTable||'<tr><td colspan="4">Sin temas registrados.</td></tr>'}</tbody></table><div class="topic-progress-list">${topicBars}</div></section><section class="adventure-section"><h2>Plan de mejora</h2>${insight}<p>${recommendation()}</p></section><section class="adventure-section"><h2>Formulario teórico en LaTeX</h2><p>Las fórmulas corresponden a los temas seleccionados y permiten reconstruir los procedimientos de las preguntas.</p><div class="formula-grid">${formulas}</div></section><section class="adventure-section"><h2>Indicadores de misión</h2><div class="twocol"><div class="formula-block"><h3>Desempeño académico</h3><ul><li><strong>Precisión:</strong> ${accuracy}%.</li><li><strong>Pistas utilizadas:</strong> ${state.answers.filter(a=>a.hint).length}.</li><li><strong>Balance académico:</strong> ${state.answers.reduce((s,a)=>s+Number(a.delta||0),0).toFixed(2)} puntos registrados.</li></ul></div><div class="formula-block"><h3>Combate espacial</h3><ul><li><strong>Disparos:</strong> ${state.stats.shotsFired||0}.</li><li><strong>Naves enemigas:</strong> ${state.stats.enemiesDestroyed||0}.</li><li><strong>Daño recibido:</strong> ${Number(state.stats.enemyDamage||0).toFixed(2)}.</li><li><strong>Salvavidas correctos:</strong> ${state.stats.lifesaverCorrect||0}.</li></ul></div></div></section><section class="adventure-section"><h2>Preguntas y retroalimentación</h2><p>Cada tarjeta conserva el enunciado original, la respuesta registrada, la respuesta correcta, la pista, el procedimiento, la gráfica o matriz asociada y el efecto en la nota.</p></section>${cards||'<section class="adventure-section"><p>No se registraron preguntas respondidas.</p></section>'}<footer class="adventure-footer">Nexo Vectorial v3.1 · Informe generado el ${end.toLocaleString('es-CO')}</footer></div></main><script>(function(){const render=()=>{if(!(window.MathJax&&MathJax.startup)){setTimeout(render,60);return;}MathJax.startup.promise.then(()=>{try{MathJax.typesetClear([document.body]);}catch(e){}return MathJax.typesetPromise([document.querySelector('.adventure-report')]);}).then(()=>document.documentElement.classList.add('math-ready')).catch(e=>console.error('MathJax del informe:',e));};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',render,{once:true});else render();})();<\/script></body></html>`;
+    const html=`<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>Informe final · ${escapeHtml(state.student)} · Nexo Vectorial</title><style>${css}</style>${mathConfig}${mathLoader}</head><body><main class="standalone-report-shell"><div class="standalone-report-note">Informe HTML autónomo generado por Nexo Vectorial · MathJax SVG local · Compatible con impresión y guardado como PDF.</div><nav class="standalone-report-tools"><button type="button" onclick="window.print()">Imprimir / Guardar PDF</button><button type="button" class="secondary" onclick="window.scrollTo({top:0,behavior:'smooth'})">Volver al inicio</button></nav><div class="adventure-report"><section class="adventure-hero"><div class="hero-icon">🚀∥A∥</div><h1>Informe Nexo Vectorial</h1><p>Operación Matriz Cero · Álgebra Lineal · Corte 1</p><p>${end.toLocaleString('es-CO')}</p></section><section class="adventure-section"><h2>Resumen de misión</h2><div class="metrics"><div class="metric"><b>${state.score.toFixed(2)}</b><span>Nota final / 5.00</span></div><div class="metric"><b>${securedUnits().toFixed(2)}</b><span>Puntaje asegurado</span></div><div class="metric"><b>${correct}/${academic.length}</b><span>Aciertos académicos</span></div><div class="metric"><b>${accuracy}%</b><span>Precisión académica</span></div><div class="metric"><b>${state.integrity}</b><span>Incidencias de integridad</span></div><div class="metric"><b>${formatTime(duration)}</b><span>Duración</span></div></div><p><strong>Estudiante:</strong> ${escapeHtml(state.student)} · <strong>Estado:</strong> ${state.disqualified?'Intento anulado por integridad':state.score>=3?'Misión aprobada':'Misión no aprobada'} · <strong>SCORM:</strong> nota enviada a Brightspace al finalizar.</p><p><strong>Temas principales seleccionados:</strong> ${(state.selectedMainTopics||[]).map(escapeHtml).join(', ')||'Ninguno registrado'}.</p><p><strong>Subtemas incluidos:</strong> ${selectedTopics.map(t=>escapeHtml(t.label)).join(', ')||'Ninguno registrado'}.</p><p><strong>Combate:</strong> ${state.stats.brownDestroyed||0} asteroides cafés destruidos · ${state.stats.enemiesDestroyed||0} naves destruidas · ${state.stats.stageBossesDefeated||0} jefes de mundo derrotados · ${state.stats.bossFormsDefeated||0}/4 fases finales superadas · ${state.stats.astrosCorrect||0} astros brillantes superados (${state.stats.astroQuestionsAdvanced||0} pruebas equivalentes).</p>${insight}</section><section class="adventure-section"><h2>Esquema de calificación</h2><p>${escapeHtml(gradingText())}. La ponderación académica se ajustó automáticamente a los temas seleccionados, y exige derrotar la escuadra y el jefe correspondiente de cada mundo antes de avanzar.</p><div class="latex formula-latex">${gradingFormula}</div><div class="twocol"><div class="formula-block"><h3>Distribución</h3><ul><li><strong>Temas:</strong> ${Number(state.grading?.topicPool||4).toFixed(2)} puntos.</li><li><strong>Escuadras:</strong> ${Number(state.grading?.fleetPool||.4).toFixed(2)} puntos.</li><li><strong>Jefes finales:</strong> ${Number(state.grading?.finalBossPool||.6).toFixed(2)} puntos.</li></ul></div><div class="formula-block"><h3>Reglas</h3><ul><li>Una pista conserva el 75% del valor de la pregunta.</li><li>Cada mundo fija el piso proporcional de nota según los mundos seleccionados.</li><li>La quinta incidencia de integridad anula el intento.</li></ul></div></div></section><section class="adventure-section"><h2>Integridad de la sesión</h2><p>El registro identifica salidas de pantalla completa, cambios de pestaña o minimización, pérdida de foco, clic derecho, copia/corte, recarga, navegación del navegador, captura y atajos restringidos.</p><table><thead><tr><th>#</th><th>Fecha y hora</th><th>Incidencia</th><th>Efecto</th></tr></thead><tbody>${integrityRows||'<tr><td colspan="4">Sin incidencias registradas.</td></tr>'}</tbody></table>${state.disqualified?'<div class="report-insight critical"><strong>Resultado:</strong> el intento fue anulado automáticamente en la quinta incidencia y la nota final quedó en 0.00.</div>':'<div class="report-insight positive"><strong>Resultado:</strong> no se alcanzó el umbral de anulación.</div>'}</section><section class="adventure-section"><h2>Desempeño por tema</h2><table><thead><tr><th>Tema evaluado</th><th>Aciertos</th><th>Porcentaje</th><th>Balance de puntos</th></tr></thead><tbody>${topicTable||'<tr><td colspan="4">Sin temas registrados.</td></tr>'}</tbody></table><div class="topic-progress-list">${topicBars}</div></section><section class="adventure-section"><h2>Plan de mejora</h2>${insight}<p>${recommendation()}</p></section><section class="adventure-section"><h2>Formulario teórico en LaTeX</h2><p>Las fórmulas corresponden a los temas seleccionados y permiten reconstruir los procedimientos de las preguntas.</p><div class="formula-grid">${formulas}</div></section><section class="adventure-section"><h2>Indicadores de misión</h2><div class="twocol"><div class="formula-block"><h3>Desempeño académico</h3><ul><li><strong>Precisión:</strong> ${accuracy}%.</li><li><strong>Pistas utilizadas:</strong> ${state.answers.filter(a=>a.hint).length}.</li><li><strong>Balance académico:</strong> ${state.answers.reduce((s,a)=>s+Number(a.delta||0),0).toFixed(2)} puntos registrados.</li></ul></div><div class="formula-block"><h3>Combate espacial</h3><ul><li><strong>Disparos:</strong> ${state.stats.shotsFired||0}.</li><li><strong>Naves enemigas:</strong> ${state.stats.enemiesDestroyed||0}.</li><li><strong>Daño recibido:</strong> ${Number(state.stats.enemyDamage||0).toFixed(2)}.</li><li><strong>Salvavidas correctos:</strong> ${state.stats.lifesaverCorrect||0}.</li></ul></div></div></section><section class="adventure-section"><h2>Preguntas y retroalimentación</h2><p>Cada tarjeta conserva el enunciado original, la respuesta registrada, la respuesta correcta, la pista, el procedimiento, la gráfica o matriz asociada y el efecto en la nota.</p></section>${cards||'<section class="adventure-section"><p>No se registraron preguntas respondidas.</p></section>'}<footer class="adventure-footer">Nexo Vectorial v3.10 · Informe generado el ${end.toLocaleString('es-CO')}</footer></div></main><script>(function(){const render=()=>{if(!(window.MathJax&&MathJax.startup)){setTimeout(render,60);return;}MathJax.startup.promise.then(()=>{try{MathJax.typesetClear([document.body]);}catch(e){}return MathJax.typesetPromise([document.querySelector('.adventure-report')]);}).then(()=>document.documentElement.classList.add('math-ready')).catch(e=>console.error('MathJax del informe:',e));};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',render,{once:true});else render();})();<\/script></body></html>`;
     const blob=new Blob([html],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`Informe_Nexo_Vectorial_${safeName(state.student)}_${new Date().toISOString().replace(/[:.]/g,'-')}.html`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);if(!auto)toast('Informe HTML completo generado.');
   }
 
@@ -1678,7 +1718,7 @@
     const grading=buildGradingPlan(questions,configured.activeDefs,selected);questions.forEach(q=>q.gradeValue=grading.questionValues[q.id]);
     Object.assign(state,{questionIndex:0,score:0,energy:5,integrity:0,integrityLog:[],xp:0,sectorProgress:Array(sectorNames.length).fill(0),worldQuestionTotals:configured.activeDefs.map(x=>x.questions||8),selectedTopics:[...selected],selectedWorlds:configured.activeDefs.map(x=>x.id),selectedMainTopics:configured.activeDefs.map(x=>mainTopicTitle(x)),activeWorldLabels:configured.activeDefs.map((x,i)=>`Mundo ${i+1} · ${mainTopicTitle(x)}`),answers:[],hints:0,startedAt:new Date(),endedAt:null,disqualified:false,completed:false,phase:'flight',phaseBeforePause:'flight',currentChallenge:null,blackHoleIndex:0,projectiles:[],mathShot:null,rewind:null,lastShotAt:0,world:1,worldStage:'asteroids',lifesaverFlags:{},lifesaverSerial:0,weaponBoostUntil:0,securedUnits:0,securedLevels:0,bossQuestionSerial:0,grading});
     integrityReportDownloaded=false;integrityCooldownUntil=0;
-    state.stats={asteroidHits:0,asteroidsAvoided:0,asteroidsShot:0,brownDestroyed:0,smallDestroyed:0,mediumDestroyed:0,largeDestroyed:0,shotsFired:0,blackHolesEntered:0,blackHoleSuccess:0,blackHoleFails:0,asteroidPenalty:0,blackHolePenalty:0,brownAsteroidHits:0,brownPenalty:0,questionAsteroidsSpawned:0,blueCorrect:0,blueWrong:0,maxAsteroids:0,distance:0,livesLost:0,rewinds:0,enemiesDestroyed:0,enemyDamage:0,enemyShots:0,lifesavers:0,lifesaverCorrect:0,bossFormsDefeated:0,bossDefeated:false,combatScore:0};
+    state.stats={asteroidHits:0,asteroidsAvoided:0,asteroidsShot:0,brownDestroyed:0,smallDestroyed:0,mediumDestroyed:0,largeDestroyed:0,shotsFired:0,blackHolesEntered:0,blackHoleSuccess:0,blackHoleFails:0,asteroidPenalty:0,blackHolePenalty:0,brownAsteroidHits:0,brownPenalty:0,questionAsteroidsSpawned:0,blueCorrect:0,blueWrong:0,maxAsteroids:0,distance:0,livesLost:0,rewinds:0,enemiesDestroyed:0,enemyDamage:0,enemyShots:0,lifesavers:0,lifesaverCorrect:0,bossFormsDefeated:0,bossDefeated:false,combatScore:0,combatPointsLost:0};
     document.body.classList.add('playing');els.boot.hidden=true;els.game.hidden=false;buildSectorDots();resizeAll();renderQuestion();animate(performance.now());saveProgress();
   };
 
@@ -1697,7 +1737,7 @@
     const now=Date.now();if(now<integrityCooldownUntil)return;const last=state.integrityLog.at(-1);if(last&&now-last.time<1350)return;integrityCooldownUntil=now+1450;
     state.phaseBeforePause=state.phase==='paused'?(state.phaseBeforePause||'flight'):state.phase;state.phase='paused';Object.keys(held).forEach(k=>held[k]=false);state.integrity++;
     const effect=state.integrity===1?'Advertencia':state.integrity<5?'−0.05':'Quiz anulado · nota 0.00';state.integrityLog.push({time:now,reason,detail,effect,number:state.integrity});
-    if(state.integrity>=2&&state.integrity<=4)state.score=Math.max(0,state.score-.05);updateHUD();saveProgress();
+    if(state.integrity>=2&&state.integrity<=4)state.score=clampScore(state.score-.05);updateHUD();saveProgress();
     if(state.integrity>=5){
       integrityWarningPending=false;state.disqualified=true;state.score=0;state.completed=true;state.endedAt=new Date();answerLocked=true;pendingContinueAction=null;Object.keys(held).forEach(k=>held[k]=false);[els.hint,els.submit,els.continue,els.finish].filter(Boolean).forEach(b=>b.disabled=true);if(raf){cancelAnimationFrame(raf);raf=0;}NVScorm.finish(0,'failed','integrity-disqualified');updateHUD();if(!integrityReportDownloaded){integrityReportDownloaded=true;setTimeout(()=>downloadReport(true),160);}
       showModal('Quiz anulado · 5/5',`<div class="integrity-warning"><p><strong>Se alcanzó el quinto bloqueo.</strong></p><p>La partida terminó, la nota quedó en <b>0.00 / 5.00</b> y el informe se descargará automáticamente.</p><p>Último bloqueo: ${escapeHtml(reason)}</p></div>`,[{label:'DESCARGAR INFORME',action:()=>downloadReport(false),primary:true}]);return;
@@ -1735,9 +1775,11 @@
   }
   function remainingWorldQuestions(sector){return Math.max(0,worldTarget(sector)-(state.sectorProgress[sector-1]||0));}
   function astroQuestionPool(sector,multiplier){
-    let pool=(multiplier>=3?bossQuestions:blackHoleQuestions).filter(q=>q.sector===sector);
-    if(!pool.length)pool=(multiplier>=3?bossQuestions:blackHoleQuestions);
-    if(!pool.length)pool=questions.filter(q=>q.sector===sector);
+    const primary=multiplier>=3?bossQuestions:blackHoleQuestions;
+    const secondary=multiplier>=3?blackHoleQuestions:bossQuestions;
+    let pool=questionsForSectorWorld(primary,sector);
+    if(!pool.length)pool=questionsForSectorWorld(secondary,sector);
+    if(!pool.length)pool=questionsForSectorWorld(questions,sector);
     return pool;
   }
   function spawnGuidedAstro(t=performance.now()){
@@ -1751,13 +1793,74 @@
     els.arrivalChip.textContent=`ASTRO ${name} DETECTADO · VALE ${multiplier} PRUEBAS`;els.arrivalChip.className='arrival-chip astro-alert';els.arrivalChip.hidden=false;beep(720,.20);setTimeout(()=>{if(els.arrivalChip.textContent.includes(name))els.arrivalChip.hidden=true;},1200);
   }
   function selectAstroQuestion(sector,multiplier){
-    const pool=astroQuestionPool(sector,multiplier);if(!pool.length)return null;
+    const pool=astroQuestionPool(sector,multiplier);
     state.astroQuestionSerial=(state.astroQuestionSerial||0)+1;
-    const q=cloneQuestion(pool[(state.astroQuestionSerial-1)%pool.length]);q.sector=sector;q.badge=`ASTRO BRILLANTE · VALOR ${multiplier} PRUEBAS`;q.id=`ASTRO-${sector}-${state.astroQuestionSerial}`;return q;
+    let q=pool.length?cloneQuestion(pool[(state.astroQuestionSerial-1)%pool.length]):fallbackQuestionForSectorWorld(sector,multiplier>=3);
+    if(!q||!questionMatchesSectorWorld(q,sector)){
+      console.warn('Se bloqueó una pregunta de astro ajena al mundo activo.',{sector,sourceWorld:sourceWorldForSector(sector),question:q});
+      q=fallbackQuestionForSectorWorld(sector,multiplier>=3);
+    }
+    if(!q)return null;
+    q.sourceWorld=sourceWorldForSector(sector);q.sector=sector;q.badge=`ASTRO BRILLANTE · VALOR ${multiplier} PRUEBAS`;q.id=`ASTRO-${sector}-${state.astroQuestionSerial}`;return q;
+  }
+  function spawnPortalAstroSet(t=performance.now()){
+    const s=state.space;if(!s||s.stage!=='asteroids')return;
+    const configs=[{x:.22,m:2},{x:.50,m:3},{x:.78,m:2}];
+    s.portalAstroZone=true;
+    s.zone='portal-astros';
+    s.safeUntil=t+20000;
+    s.portalAstros=configs.map((cfg,i)=>({
+      id:`portal_astro_${Date.now()}_${i}`,
+      name:MATHEMATICIAN_ASTROS[((s.sector-1)*3+i+(s.astrosSpawned||0))%MATHEMATICIAN_ASTROS.length],
+      multiplier:cfg.m,
+      x:cfg.x,
+      y:.14+i*.03,
+      r:.053+Math.random()*.01,
+      speed:.045+Math.min(5,s.sector)*.004,
+      phase:Math.random()*Math.PI*2,
+      bornAt:t,
+      fromPortalZone:true
+    }));
+    if(astroMessageText){astroMessageText.hidden=false;astroMessageText.textContent='CÁMARA DE ASTROS: APARECIERON TRES ASTROS A LA VEZ';}
+    els.arrivalChip.textContent='SALTO EXITOSO · CÁMARA DE TRES ASTROS';
+    els.arrivalChip.className='arrival-chip astro-alert';
+    els.arrivalChip.hidden=false;
+    setTimeout(()=>{if(els.arrivalChip.textContent.includes('CÁMARA DE TRES ASTROS'))els.arrivalChip.hidden=true;},1200);
+  }
+  function nearestPortalAstro(){
+    const arr=state.space?.portalAstros||[];if(!arr.length)return null;
+    const w=Math.max(1,gameCanvas.width||innerWidth),h=Math.max(1,gameCanvas.height||innerHeight),sx=w/2+state.drone.x,sy=h*.78+state.drone.y;
+    return arr.slice().sort((a,b)=>Math.hypot(a.x*w-sx,a.y*h-sy)-Math.hypot(b.x*w-sx,b.y*h-sy))[0]||null;
+  }
+  function clearPortalAstroZone(message='CÁMARA DE ASTROS SUPERADA'){
+    const s=state.space;if(!s)return;
+    s.portalAstros=[];s.portalAstroZone=false;
+    if(s.zone==='portal-astros')s.zone='safe';
+    s.safeUntil=performance.now()+5500;
+    s.blackHoleAt=performance.now()+12000+Math.random()*4000;
+    hideGuidedAstroUI();
+    if(message)activateFlight(message);
+  }
+  function updatePortalAstros(w,h,dt,t){
+    const s=state.space;if(!s||s.stage!=='asteroids'||!s.portalAstros?.length){if(!s?.guidedAstro)hideGuidedAstroUI();return;}
+    if(state.phase==='flight'){
+      const sx=w/2+state.drone.x,sy=h*.78+state.drone.y,shipR=Math.max(20,Math.min(w,h)*.034);
+      s.portalAstros=s.portalAstros.filter(a=>{
+        a.y+=a.speed*dt;
+        a.x+=Math.sin(t*.0011+a.phase)*.010*dt;
+        a.x=Math.max(.10,Math.min(.90,a.x));
+        const ax=a.x*w,ay=a.y*h,ar=a.r*Math.min(w,h);
+        if(t>=(s.invulnerableUntil||0)&&Math.hypot(ax-sx,ay-sy)<shipR+ar*.72){triggerCollision('astro',a);return false;}
+        return a.y<1.18;
+      });
+      if(!s.portalAstros.length){clearPortalAstroZone('CÁMARA DE ASTROS COMPLETADA · REGRESO A LA RUTA');return;}
+    }
+    const nearest=nearestPortalAstro();
+    if(nearest)updateGuidedAstroUI(w,h,nearest);
   }
   function updateGuidedAstro(w,h,dt,t){
     const s=state.space;if(!s||s.stage!=='asteroids'){hideGuidedAstroUI();return;}
-    if(!s.guidedAstro&&state.phase==='flight'&&t>(s.nextAstroAt||Infinity)&&(s.astrosSpawned||0)<3&&remainingWorldQuestions(s.sector)>=2)spawnGuidedAstro(t);
+    if(!s.portalAstroZone&&!s.guidedAstro&&state.phase==='flight'&&t>(s.nextAstroAt||Infinity)&&(s.astrosSpawned||0)<3&&remainingWorldQuestions(s.sector)>=2)spawnGuidedAstro(t);
     const a=s.guidedAstro;if(!a){hideGuidedAstroUI();return;}
     if(state.phase==='flight'){
       a.y+=a.speed*dt;a.x+=Math.sin(t*.0014+a.phase)*.022*dt;a.x=Math.max(.08,Math.min(.92,a.x));
@@ -1789,30 +1892,35 @@
   function resolveGuidedAstro(correct){
     const ch=state.currentChallenge,s=state.space;if(!ch||ch.kind!=='astro'||!s)return;const sector=ch.sector;
     if(correct){
-      const a=s.guidedAstro;if(a){addExplosion(a.x,a.y,a.r*1.5,'math');addScoreFloat(`ASTRO ${a.name} SUPERADO`,a.x,a.y,'life');}
-      s.guidedAstro=null;s.nextAstroAt=performance.now()+18000+Math.random()*7000;restoreCollisionPoint(ch.snapshot);s.invulnerableUntil=performance.now()+2100;state.currentChallenge=null;hideChallengeForAction();hideGuidedAstroUI();
+      let a=s.guidedAstro;
+      if(ch.fromPortalZone){a=(s.portalAstros?.find(x=>x.id===ch.objectId))||ch.portalAstroSnapshot||a;s.portalAstros=(s.portalAstros||[]).filter(x=>x.id!==ch.objectId);}else s.guidedAstro=null;
+      if(a){addExplosion(a.x,a.y,a.r*1.5,'math');addScoreFloat(`ASTRO ${a.name} SUPERADO`,a.x,a.y,'life');}
+      s.nextAstroAt=performance.now()+18000+Math.random()*7000;restoreCollisionPoint(ch.snapshot);s.invulnerableUntil=performance.now()+2100;state.currentChallenge=null;hideChallengeForAction();
+      if(ch.fromPortalZone&&s.portalAstros?.length){activateFlight(`ASTRO ${ch.astroName} SUPERADO · SIGUEN ${s.portalAstros.length} ASTROS EN LA CÁMARA`);return;}
+      hideGuidedAstroUI();
+      if(ch.fromPortalZone&&(!s.portalAstros||!s.portalAstros.length)){clearPortalAstroZone('CÁMARA DE ASTROS SUPERADA · REGRESO A LA RUTA');return;}
       if(state.sectorProgress[sector-1]>=worldTarget(sector)){startEnemyWave(sector);return;}
       activateFlight(`ASTRO ${ch.astroName} SUPERADO · AVANCE ×${ch.advance}`);
     }else{
-      s.guidedAstro=null;s.route=s.checkpointRoute||0;s.asteroids=[];s.blackHoles=[];seedAsteroids(76+s.sector*8);s.nextCoreAt=performance.now()+2100;s.nextAstroAt=performance.now()+15000;s.blackHoleAt=performance.now()+10500;s.invulnerableUntil=performance.now()+2700;state.drone.x=0;state.drone.y=0;state.drone.vx=0;state.drone.vy=0;state.currentChallenge=null;hideChallengeForAction();hideGuidedAstroUI();activateFlight(`ASTRO FALLIDO · REINICIO EN PUNTO SEGURO`);
+      s.guidedAstro=null;s.portalAstros=[];s.portalAstroZone=false;s.route=s.checkpointRoute||0;s.asteroids=[];s.blackHoles=[];seedAsteroids(76+s.sector*8);s.nextCoreAt=performance.now()+2100;s.nextAstroAt=performance.now()+15000;s.blackHoleAt=performance.now()+10500;s.invulnerableUntil=performance.now()+2700;state.drone.x=0;state.drone.y=0;state.drone.vx=0;state.drone.vy=0;state.currentChallenge=null;hideChallengeForAction();hideGuidedAstroUI();activateFlight(`ASTRO FALLIDO · REINICIO EN PUNTO SEGURO`);
     }
   }
 
   const baseInitSpaceV31=initSpace;
-  initSpace=function(sector,resetShip){baseInitSpaceV31(sector,resetShip);const s=state.space,now=performance.now();s.guidedAstro=null;s.nextAstroAt=now+8500+Math.random()*5000;s.astrosSpawned=0;};
+  initSpace=function(sector,resetShip){baseInitSpaceV31(sector,resetShip);const s=state.space,now=performance.now();s.guidedAstro=null;s.portalAstros=[];s.portalAstroZone=false;s.nextAstroAt=now+8500+Math.random()*5000;s.astrosSpawned=0;};
 
   const baseUpdateAsteroidObjectsV31=updateAsteroidObjects;
-  updateAsteroidObjects=function(w,h,dt,t,safe){baseUpdateAsteroidObjectsV31(w,h,dt,t,safe);if(state.phase==='flight')updateGuidedAstro(w,h,dt,t);else updateGuidedAstroUI(w,h,state.space?.guidedAstro);};
+  updateAsteroidObjects=function(w,h,dt,t,safe){baseUpdateAsteroidObjectsV31(w,h,dt,t,safe);if(state.space?.portalAstroZone&&state.space?.portalAstros?.length){updatePortalAstros(w,h,dt,t);return;}if(state.phase==='flight')updateGuidedAstro(w,h,dt,t);else updateGuidedAstroUI(w,h,state.space?.guidedAstro);};
 
   const baseDrawSpaceSceneV31=drawSpaceScene;
-  drawSpaceScene=function(c,w,h,t,dt,paused){baseDrawSpaceSceneV31(c,w,h,t,dt,paused);if(state.space?.stage==='asteroids'&&state.space?.guidedAstro)drawGuidedAstro(c,w,h,state.space.guidedAstro,t);};
+  drawSpaceScene=function(c,w,h,t,dt,paused){baseDrawSpaceSceneV31(c,w,h,t,dt,paused);if(state.space?.stage==='asteroids'&&state.space?.portalAstros?.length)state.space.portalAstros.forEach(a=>drawGuidedAstro(c,w,h,a,t));if(state.space?.stage==='asteroids'&&state.space?.guidedAstro)drawGuidedAstro(c,w,h,state.space.guidedAstro,t);};
 
   const baseTriggerCollisionV31=triggerCollision;
   triggerCollision=function(kind,obj){
     if(kind!=='astro')return baseTriggerCollisionV31(kind,obj);
     if(state.phase!=='flight'||state.completed||performance.now()<(state.space?.invulnerableUntil||0))return;
     const s=state.space,q=selectAstroQuestion(s.sector,obj.multiplier);if(!q)return;
-    state.currentChallenge={kind:'astro',objectId:obj.id,astroName:obj.name,multiplier:obj.multiplier,sector:s.sector,q,snapshot:{route:s.route,drone:{...state.drone},sector:s.sector,checkpointRoute:s.checkpointRoute}};
+    state.currentChallenge={kind:'astro',objectId:obj.id,astroName:obj.name,multiplier:obj.multiplier,fromPortalZone:!!obj.fromPortalZone,portalAstroSnapshot:obj.fromPortalZone?{...obj}:null,sector:s.sector,q,snapshot:{route:s.route,drone:{...state.drone},sector:s.sector,checkpointRoute:s.checkpointRoute}};
     state.stats.astrosReached=(state.stats.astrosReached||0)+1;s.flashUntil=performance.now()+520;state.phase='impact';hideGuidedAstroUI();els.arrivalChip.textContent=`ASTRO ${obj.name} ALCANZADO · RETO ×${obj.multiplier}`;els.arrivalChip.className='arrival-chip astro-alert';els.arrivalChip.hidden=false;beep(840,.28);spawnBurst('good');setTimeout(()=>{els.arrivalChip.hidden=true;revealChallenge();},470);
   };
 
@@ -1820,7 +1928,7 @@
   revealChallenge=async function(){
     const isAstro=state.currentChallenge?.kind==='astro';await baseRevealChallengeV31();if(!isAstro||state.completed)return;const ch=state.currentChallenge;if(!ch)return;
     questionPanel.classList.add('astro-message');questionPanel.classList.remove('asteroid-message','blackhole-message','boss-message','lifesaver-message');
-    els.qCount.textContent=`ASTRO ${ch.astroName} · RETO ESPECIAL`;els.qBadge.textContent=`ACIERTA: AVANZA ${ch.multiplier} PRUEBAS · ERROR: REINICIO EN PUNTO SEGURO`;messageKind&&(messageKind.textContent=`ASTRO ${ch.astroName}`);els.instruction.textContent=`Resuelve el reto avanzado del astro ${ch.astroName}. Equivale a ${ch.multiplier} preguntas de asteroide azul.`;
+    els.qCount.textContent=`ASTRO ${ch.astroName} · RETO ESPECIAL`;els.qBadge.textContent=`ACIERTA: AVANZA ${ch.multiplier} PRUEBAS · ERROR: REINICIO EN PUNTO SEGURO`;messageKind&&(messageKind.textContent=`ASTRO ${ch.astroName}`);els.instruction.textContent=ch.fromPortalZone?`Has ingresado a la cámara del portal. Resuelve el reto del astro ${ch.astroName}; hay tres astros activos al mismo tiempo en este espacio especial.`:`Resuelve el reto avanzado del astro ${ch.astroName}. Equivale a ${ch.multiplier} preguntas de asteroide azul.`;
     setFeedback(`Has alcanzado el astro <b>${ch.astroName}</b>. La pregunta es más compleja y puede reemplazar ${ch.multiplier} pruebas normales del mundo.`,'neutral');await typeset();
   };
 
@@ -1830,7 +1938,7 @@
     if(q.type==='numeric'){const inp=$('#numericAnswer');if(!inp||inp.value===''){toast('Escribe una respuesta numérica.');return;}value=Number(inp.value);}if(value===null){toast('Selecciona una respuesta.');return;}
     q._attempts++;const correct=isCorrectAnswer(q,value);answerLocked=true;els.submit.disabled=true;els.hint.disabled=true;
     if(correct){
-      const covered=coveredQuestionsForAstro(ch.sector,ch.multiplier),advance=Math.max(1,covered.length),factor=q._hintUsed?.75:1,reward=covered.reduce((sum,item)=>sum+mainQuestionValue(item),0)*factor;
+      const covered=coveredQuestionsForAstro(ch.sector,ch.multiplier),advance=Math.max(1,covered.length),factor=q._hintUsed?.75:1,fallbackBase=Math.max(.01,mainQuestionValue(questions[state.questionIndex]||q)),reward=Math.max(.01,(covered.length?covered.reduce((sum,item)=>sum+Math.max(.01,mainQuestionValue(item)),0):fallbackBase*advance)*factor);
       ch.advance=advance;state.score=clampScore(state.score+reward);state.sectorProgress[ch.sector-1]=Math.min(worldTarget(ch.sector),(state.sectorProgress[ch.sector-1]||0)+advance);state.questionIndex+=advance;state.xp+=advance*130;state.stats.astrosCorrect=(state.stats.astrosCorrect||0)+1;state.stats.astroQuestionsAdvanced=(state.stats.astroQuestionsAdvanced||0)+advance;
       state.answers.push(recordAnswer(q,true,value,reward,`Astro ${ch.astroName} · avance ×${advance}`));markOptions(q,true,value);setFeedback(`<b>Reto correcto.</b> El astro ${ch.astroName} concede el avance equivalente a <b>${advance} preguntas de asteroide azul</b>${q._hintUsed?' con la reducción correspondiente por uso de pista':''}.<br>${q.explanation}`,'good');beep(1040,.30);updateHUD();saveProgress();offerContinue(()=>resolveGuidedAstro(true),`CONTINUAR · ABSORBER EL ASTRO ${ch.astroName}`);
     }else{
@@ -1839,7 +1947,7 @@
   };
 
   const baseActivateFlightV31=activateFlight;
-  activateFlight=function(message){baseActivateFlightV31(message);if(state.space?.guidedAstro){const a=state.space.guidedAstro;els.instruction.textContent=`La brújula señala el astro ${a.name}. Alcánzalo: vale ${a.multiplier} preguntas normales.`;}else hideGuidedAstroUI();};
+  activateFlight=function(message){baseActivateFlightV31(message);if(state.space?.portalAstroZone&&state.space?.portalAstros?.length){els.instruction.textContent='Has entrado al espacio especial del portal: hay tres astros simultáneos. Alcanza cualquiera de ellos para activar su reto.';const nearest=nearestPortalAstro();if(nearest)updateGuidedAstroUI(gameCanvas.width||innerWidth,gameCanvas.height||innerHeight,nearest);return;}if(state.space?.guidedAstro){const a=state.space.guidedAstro;els.instruction.textContent=`La brújula señala el astro ${a.name}. Alcánzalo: vale ${a.multiplier} preguntas normales.`;}else hideGuidedAstroUI();};
 
   const baseHideQuestionPanelV31=hideQuestionPanel;
   hideQuestionPanel=function(){baseHideQuestionPanelV31();questionPanel.classList.remove('astro-message');};
@@ -1860,6 +1968,756 @@
   const baseDownloadReportV31=downloadReport;
   downloadReport=function(auto){baseDownloadReportV31(auto);};
 
+  /* ===== v3.2 · Física inercial, enemigos armados y jefe al final de cada mundo ===== */
+  const clampV32=(value,min,max)=>Math.max(min,Math.min(max,value));
+  const normalizeV32=(x,y)=>{const length=Math.hypot(x,y)||1;return{x:x/length,y:y/length};};
+  const limitVelocityV32=(body,maxSpeed)=>{const speed=Math.hypot(body.vx||0,body.vy||0);if(speed>maxSpeed){body.vx=body.vx/speed*maxSpeed;body.vy=body.vy/speed*maxSpeed;}};
+  const levelBossNamesV32=['GUARDIÁN VECTORIAL','GUARDIÁN TRIDIMENSIONAL','GUARDIÁN MATRICIAL','GUARDIÁN DETERMINANTE','GUARDIÁN DEL NÚCLEO'];
+
+  spawnEnemy=function(i,count,sector){
+    const palettes=[{fill:'#3a1230',stroke:'#ff5aa5',core:'#ffd6f0'},{fill:'#123748',stroke:'#5cc8ff',core:'#d5f4ff'},{fill:'#173815',stroke:'#89ff71',core:'#e3ffd9'},{fill:'#4a2b11',stroke:'#ffbf52',core:'#fff0bf'},{fill:'#2d1148',stroke:'#d48cff',core:'#f2d9ff'}];
+    const p=palettes[Math.min(sector-1,palettes.length-1)],final=sector>=sectorNames.length;
+    const columns=Math.max(2,Math.min(5,Math.ceil(Math.sqrt(count)))),row=Math.floor(i/columns),column=i%columns;
+    const x=.13+column*(.74/Math.max(1,columns-1))+(row%2?.035:-.025),targetY=.12+(row%3)*.075;
+    const maxSpeed=(final?.285:.205)+Math.min(5,sector)*.012+Math.random()*.025;
+    const weaponModes=final?['spread','snipe','burst']:['single','single','burst','spread'];
+    state.space.enemies.push({
+      id:`e${Date.now()}_${i}_${Math.random()}`,x:clampV32(x,.08,.92),y:-.12-row*.065,targetY,r:final?.049:.043,
+      hp:final?3:2,maxHp:final?3:2,vx:(Math.random()-.5)*.05,vy:.12+Math.random()*.04,ax:0,ay:0,maxSpeed,
+      acceleration:final?.72:.58,drag:final?.90:.88,phase:Math.random()*Math.PI*2,heading:0,tilt:0,
+      fireAt:performance.now()+650+Math.random()*(final?520:900),burstLeft:0,hitFlash:0,dead:false,palette:p,
+      portalPhase:final,portalAt:performance.now()+1300+Math.random()*900,weaponMode:weaponModes[i%weaponModes.length]
+    });
+  };
+
+  startEnemyWave=function(sector){
+    const s=state.space;if(!s)return;if(s.guidedAstro)s.guidedAstro=null;hideGuidedAstroUI();
+    state.world=sector;state.worldStage='enemies';state.phase='impact';s.stage='enemies';s.safeUntil=0;s.asteroids=[];s.blackHoles=[];s.projectiles=[];s.enemyProjectiles=[];s.enemies=[];s.boss=null;s.waveCleared=false;s.invulnerableUntil=performance.now()+1900;
+    const finalSector=sector>=sectorNames.length,count=plannedEnemyCount(sector,sectorNames.length);s.spawnTotal=count;
+    for(let i=0;i<count;i++)spawnEnemy(i,count,sector);
+    bossHud.hidden=true;hideQuestionPanel();els.flightHud.hidden=false;els.arrivalChip.textContent=finalSector?`MUNDO ${sector} · ESCUADRA DE ÉLITE`:`MUNDO ${sector} · ESCUADRA ARMADA`;els.arrivalChip.className='arrival-chip enemy-alert';els.arrivalChip.hidden=false;
+    els.flightTitle.textContent=finalSector?'ENEMIGOS RÁPIDOS · DISPAROS MÚLTIPLES':`ESCUADRA DEL MUNDO ${sector}`;
+    els.flightTarget.textContent=`Destruye ${count} naves armadas; después aparecerá el jefe del mundo.`;
+    els.instruction.textContent='Los enemigos aceleran, frenan, giran y disparan según su trayectoria. Esquiva las ráfagas y aprovecha su inercia.';
+    setTimeout(()=>{els.arrivalChip.hidden=true;triggerBossGate(sector,'enemy-wave',`MUNDO ${sector} · CÁLCULO DE ACCESO AL COMBATE`);},720);updateCombatHud();updateHUD();
+  };
+
+  updateEnemyWave=function(w,h,dt,t){
+    const s=state.space,shipX=(w/2+state.drone.x)/w,shipY=(h*.78+state.drone.y)/h;s.route+=dt*128;state.stats.distance+=dt*128;
+    for(const e of s.enemies){
+      if(e.dead)continue;
+      if(e.portalPhase&&t>(e.portalAt||0)){e.x=.10+Math.random()*.80;e.y=.07+Math.random()*.20;e.vx=(Math.random()-.5)*.16;e.vy=.05+Math.random()*.08;e.portalAt=t+1050+Math.random()*850;e.hiddenUntil=t+220;}
+      const entering=e.y<e.targetY-.018;
+      const orbitX=shipX+Math.sin(t*.00125+e.phase)*(.13+(e.portalPhase?.07:.04));
+      const orbitY=e.targetY+Math.cos(t*.00165+e.phase)*.045;
+      const targetX=entering?e.x:clampV32(orbitX,.07,.93),targetY=entering?e.targetY:clampV32(orbitY,.08,.40);
+      const desired=normalizeV32(targetX-e.x,targetY-e.y),desiredSpeed=entering?e.maxSpeed*.78:e.maxSpeed;
+      const steerX=desired.x*desiredSpeed-(e.vx||0),steerY=desired.y*desiredSpeed-(e.vy||0);
+      e.ax=steerX*e.acceleration;e.ay=steerY*e.acceleration;
+      e.vx=(e.vx||0)+e.ax*dt;e.vy=(e.vy||0)+e.ay*dt;
+      const drag=Math.pow(e.drag,dt);e.vx*=drag;e.vy*=drag;limitVelocityV32(e,e.maxSpeed);
+      e.x+=e.vx*dt;e.y+=e.vy*dt;
+      if(e.x<.045){e.x=.045;e.vx=Math.abs(e.vx)*.72;}else if(e.x>.955){e.x=.955;e.vx=-Math.abs(e.vx)*.72;}
+      if(e.y<.045){e.y=.045;e.vy=Math.abs(e.vy)*.65;}else if(e.y>.48){e.y=.48;e.vy=-Math.abs(e.vy)*.72;}
+      const targetHeading=Math.atan2(e.vy,e.vx)-Math.PI/2;e.heading+=(targetHeading-e.heading)*Math.min(1,dt*7);e.tilt+=(clampV32(e.vx/e.maxSpeed,-1,1)-e.tilt)*Math.min(1,dt*6);
+      if(t>e.fireAt&&e.y>.035&&!(e.hiddenUntil&&t<e.hiddenUntil)){
+        spawnEnemyShot(e,shipX,shipY,false);
+        if(e.weaponMode==='burst'){e.burstLeft=2;e.nextBurst=t+105;}
+        const base=e.portalPhase?560:880,sectorReduction=Math.min(260,s.sector*45);e.fireAt=t+base-sectorReduction+Math.random()*(e.portalPhase?420:720);
+      }
+      if(e.burstLeft>0&&t>(e.nextBurst||0)){spawnEnemyShot(e,shipX,shipY,false);e.burstLeft--;e.nextBurst=t+110;}
+    }
+    s.enemies=s.enemies.filter(e=>!e.dead);
+    updateProjectiles(w,h,dt,t);updateEnemyBullets(w,h,dt,t);checkEnemyCollisions(w,h,t);
+    if(!s.enemies.length&&!s.waveCleared){
+      s.waveCleared=true;els.flightTitle.textContent='ESCUADRA DESTRUIDA';els.flightTarget.textContent=s.sector<sectorNames.length?'El jefe del mundo entra en combate…':'Los jefes finales Alfa y Beta están entrando…';
+      setTimeout(()=>{if(state.completed)return;if(s.sector<sectorNames.length)startLevelBoss(s.sector);else startFinalBoss();},1250);
+    }
+  };
+
+  spawnEnemyShot=function(source,shipX,shipY,boss){
+    const s=state.space;if(!s)return;const isBoss=!!boss||source.isLevelBoss||source.isFinalBoss;
+    const heading=Number.isFinite(source.heading)?source.heading:0,forward={x:Math.sin(heading),y:Math.cos(heading)};
+    const aimed=normalizeV32(shipX-source.x,shipY-source.y),aimWeight=isBoss?.86:(source.weaponMode==='snipe'?.9:.72);
+    const direction=normalizeV32(forward.x*(1-aimWeight)+aimed.x*aimWeight,forward.y*(1-aimWeight)+aimed.y*aimWeight);
+    const speed=isBoss?(source.isLevelBoss?.61:.67):(source.weaponMode==='snipe'?.57:.47);
+    const originX=source.x+forward.x*(source.r||.03)*.72,originY=source.y+forward.y*(source.r||.03)*.72;
+    const damage=isBoss?(source.isLevelBoss?.78+.045*(source.sector||1):.88+.06*((source.form||1)-1)):(source.weaponMode==='snipe'?.67:.48);
+    const radius=isBoss?.0074:.0052;
+    s.enemyProjectiles.push({x:originX,y:originY,vx:direction.x*speed,vy:direction.y*speed,r:radius,damage,life:3.4,kind:isBoss?'boss':'enemy'});let emitted=1;
+    if(!isBoss&&source.weaponMode==='spread'){
+      for(const angle of[-.18,.18]){const ca=Math.cos(angle),sa=Math.sin(angle),vx=direction.x*ca-direction.y*sa,vy=direction.x*sa+direction.y*ca;s.enemyProjectiles.push({x:originX,y:originY,vx:vx*speed*.92,vy:vy*speed*.92,r:.005,damage:.43,life:3.2,kind:'enemy'});emitted++;}
+    }
+    state.stats.enemyShots+=emitted;
+  };
+
+  function startLevelBoss(sector){
+    const s=state.space;if(!s||state.completed)return;const now=performance.now(),index=Math.min(4,Math.max(0,sector-1));
+    state.world=sector;state.worldStage='boss';state.phase='boss';s.stage='boss';s.projectiles=[];s.enemyProjectiles=[];s.enemies=[];s.invulnerableUntil=now+2100;
+    const hp=24+sector*10,maxSpeed=.315+sector*.025;
+    s.boss={x:.5,y:.15,r:.086+sector*.006,form:1,hp,maxHp:hp,vx:.12*(sector%2?-1:1),vy:.03,ax:0,ay:0,maxSpeed,acceleration:1.15+sector*.08,drag:.90,heading:0,tilt:0,fireAt:now+850,transformUntil:now+1100,hitFlash:0,dead:false,isLevelBoss:true,isFinalBoss:false,sector,name:levelBossNamesV32[index],targetX:.5,targetY:.17,targetAt:now+500,patternSerial:0};
+    hideQuestionPanel();els.flightHud.hidden=false;bossHud.hidden=false;els.arrivalChip.textContent=`JEFE DEL MUNDO ${sector} · ${s.boss.name}`;els.arrivalChip.className='arrival-chip boss-alert';els.arrivalChip.hidden=false;
+    els.flightTitle.textContent=`JEFE DEL MUNDO ${sector}`;els.flightTarget.textContent='Más rápido que la escuadra · disparos fuertes · movimiento con inercia';els.instruction.textContent='El jefe acelera hacia nuevas posiciones, conserva impulso al girar y combina disparos dirigidos con ráfagas laterales.';
+    setTimeout(()=>{if(els.arrivalChip.textContent.includes(`MUNDO ${sector}`))els.arrivalChip.hidden=true;},1150);updateBossHud();updateHUD();
+  }
+
+  startFinalBoss=function(){
+    const s=state.space;if(!s||state.completed)return;if(s.guidedAstro)s.guidedAstro=null;hideGuidedAstroUI();const now=performance.now();
+    state.world=sectorNames.length;state.worldStage='boss';state.phase='impact';s.stage='boss';s.asteroids=[];s.blackHoles=[];s.enemies=[];s.projectiles=[];s.enemyProjectiles=[];s.invulnerableUntil=now+2300;
+    s.boss={x:.5,y:.17,r:.11,form:1,hp:BOSS_HP[0],maxHp:BOSS_HP[0],vx:.18,vy:.02,ax:0,ay:0,maxSpeed:.43,acceleration:1.45,drag:.91,heading:0,tilt:0,fireAt:now+1000,transformUntil:now+1500,hitFlash:0,dead:false,portalAt:now+1550,targetAt:now+550,targetX:.5,targetY:.16,patternSerial:0,isLevelBoss:false,isFinalBoss:true,sector:sectorNames.length};
+    hideQuestionPanel();els.flightHud.hidden=false;bossHud.hidden=false;els.arrivalChip.textContent='JEFE FINAL DEL ÚLTIMO MUNDO · ALFA Y BETA';els.arrivalChip.className='arrival-chip boss-alert';els.arrivalChip.hidden=false;
+    els.flightTitle.textContent='BATALLA FINAL · JEFES ALFA Y BETA';els.flightTarget.textContent='Cuatro formas · aceleración superior · portales · disparos de alto impacto';els.instruction.textContent='El jefe final es más veloz que el jugador, cambia de trayectoria con inercia y dispara ráfagas dirigidas y laterales.';
+    setTimeout(()=>{els.arrivalChip.hidden=true;triggerBossGate(sectorNames.length,'boss','JEFE FINAL ALFA · ESCUDO DE CÁLCULO');},900);updateBossHud();
+  };
+
+  updateBossBattle=function(w,h,dt,t){
+    const s=state.space,b=s.boss;if(!b||b.dead)return;const shipX=(w/2+state.drone.x)/w,shipY=(h*.78+state.drone.y)/h;
+    if(t>b.transformUntil){
+      const form=b.form||1,aggression=b.isLevelBoss?(.10+.018*b.sector):(.15+.025*form);
+      if(t>(b.targetAt||0)){
+        const lead=clampV32(shipX+(state.drone.vx||0)/Math.max(320,w)*.16,.10,.90);
+        b.targetX=clampV32(lead+(Math.random()-.5)*(b.isLevelBoss?.36:.46),.10,.90);
+        b.targetY=clampV32(.10+Math.random()*(b.isLevelBoss?.25:.30),.08,.40);
+        b.targetAt=t+(b.isLevelBoss?620:480)+Math.random()*(b.isLevelBoss?420:330);
+      }
+      const pursuitX=b.targetX*(1-aggression)+shipX*aggression,pursuitY=b.targetY;
+      const desired=normalizeV32(pursuitX-b.x,pursuitY-b.y),maxSpeed=b.isLevelBoss?(.315+b.sector*.025):(.41+form*.045);
+      b.maxSpeed=maxSpeed;const desiredSpeed=maxSpeed*(.76+.24*Math.min(1,Math.hypot(pursuitX-b.x,pursuitY-b.y)*4));
+      b.ax=(desired.x*desiredSpeed-(b.vx||0))*b.acceleration;b.ay=(desired.y*desiredSpeed-(b.vy||0))*b.acceleration;
+      b.vx=(b.vx||0)+b.ax*dt;b.vy=(b.vy||0)+b.ay*dt;const drag=Math.pow(b.drag||.91,dt);b.vx*=drag;b.vy*=drag;limitVelocityV32(b,maxSpeed);
+      b.x+=b.vx*dt;b.y+=b.vy*dt;
+      if(b.x<.075){b.x=.075;b.vx=Math.abs(b.vx)*.76;}else if(b.x>.925){b.x=.925;b.vx=-Math.abs(b.vx)*.76;}
+      if(b.y<.055){b.y=.055;b.vy=Math.abs(b.vy)*.70;}else if(b.y>.48){b.y=.48;b.vy=-Math.abs(b.vy)*.72;}
+      const targetHeading=Math.atan2(b.vy,b.vx)-Math.PI/2;b.heading+=(targetHeading-b.heading)*Math.min(1,dt*(b.isLevelBoss?5.5:7.2));b.tilt+=(clampV32(b.vx/maxSpeed,-1,1)-b.tilt)*Math.min(1,dt*5);
+      if(!b.isLevelBoss&&form>=3&&t>(b.portalAt||0)){b.x=.12+Math.random()*.76;b.y=.08+Math.random()*.24;b.vx=(Math.random()-.5)*maxSpeed*.8;b.vy=(Math.random()-.5)*maxSpeed*.35;b.portalAt=t+1000+Math.random()*700;b.hiddenUntil=t+220;}
+      if(t>b.fireAt&&!(b.hiddenUntil&&t<b.hiddenUntil)){spawnBossPattern(b,shipX,shipY);const interval=b.isLevelBoss?Math.max(410,790-b.sector*62):Math.max(235,650-form*92);b.fireAt=t+interval+Math.random()*(b.isLevelBoss?230:145);}
+    }
+    updateProjectiles(w,h,dt,t);updateEnemyBullets(w,h,dt,t);
+    if(t>s.invulnerableUntil&&Math.hypot((b.x-shipX)*w,(b.y-shipY)*h)<(b.r+.034)*Math.min(w,h)){damagePlayer(b.isLevelBoss?1.05+.06*b.sector:1.35,'Embestida del jefe');s.invulnerableUntil=t+1550;}
+  };
+
+  spawnBossPattern=function(b,shipX,shipY){
+    const s=state.space;if(!s)return;b.patternSerial=(b.patternSerial||0)+1;spawnEnemyShot(b,shipX,shipY,true);
+    const form=b.form||1,level=b.sector||1,count=b.isLevelBoss?Math.min(5,2+level):Math.min(7,3+form),spread=b.isLevelBoss?.12:.105;
+    const heading=Number.isFinite(b.heading)?b.heading:0,forward={x:Math.sin(heading),y:Math.cos(heading)},originX=b.x+forward.x*b.r*.65,originY=b.y+forward.y*b.r*.65;
+    for(let i=0;i<count;i++){
+      const angle=(i-(count-1)/2)*spread,ca=Math.cos(angle),sa=Math.sin(angle),vx=forward.x*ca-forward.y*sa,vy=forward.x*sa+forward.y*ca;
+      const downward=normalizeV32(vx*.38+(shipX-b.x)*.62,vy*.38+(shipY-b.y)*.62),speed=b.isLevelBoss?.50+.015*level:.56+.022*form;
+      s.enemyProjectiles.push({x:originX,y:originY,vx:downward.x*speed,vy:downward.y*speed,r:b.isLevelBoss?.0067:.0072,damage:b.isLevelBoss?.62+.045*level:.70+.055*form,life:3.5,kind:'boss'});
+    }
+    if(b.patternSerial%2===0){
+      const sideSpeed=b.isLevelBoss?.39:.47;for(const side of[-1,1])s.enemyProjectiles.push({x:b.x,y:b.y,vx:side*sideSpeed,vy:.18+(b.isLevelBoss?.025*level:.025*form),r:.0065,damage:b.isLevelBoss?.64:.78,life:3.1,kind:'boss'});
+      state.stats.enemyShots+=2;
+    }
+    state.stats.enemyShots+=count;
+  };
+
+  const baseDefeatBossFormV32=defeatBossForm;
+  defeatBossForm=function(){
+    const s=state.space,b=s?.boss;if(!b||b.dead)return;
+    if(!b.isLevelBoss)return baseDefeatBossFormV32();
+    b.dead=true;state.stats.stageBossesDefeated=(state.stats.stageBossesDefeated||0)+1;state.xp+=90+b.sector*20;s.enemyProjectiles=[];addExplosion(b.x,b.y,b.r*1.8,'math');addScoreFloat(`JEFE DEL MUNDO ${b.sector} DERROTADO`,b.x,b.y,'life');bossHud.hidden=true;
+    lockClearedLevel(b.sector);state.phase='victory';els.flightTitle.textContent=`MUNDO ${b.sector} SUPERADO`;els.flightTarget.textContent='Escuadra y jefe derrotados · puntaje del mundo asegurado';els.instruction.textContent='Preparando el salto al siguiente mundo.';beep(930,.38);
+    setTimeout(()=>{if(!state.completed)beginSectorTransition(b.sector+1);},1550);
+  };
+
+  const baseDrawEnemyShipV32=drawEnemyShip;
+  drawEnemyShip=function(c,w,h,e,t){
+    if(e.hiddenUntil&&t<e.hiddenUntil)return;const x=e.x*w,y=e.y*h,r=e.r*Math.min(w,h),p=e.palette||{fill:'#48220a',stroke:'#ffbe4a',core:'#ff5f53'};c.save();c.translate(x,y);c.rotate(e.heading||0);
+    const speed=Math.hypot(e.vx||0,e.vy||0),flame=(.55+.45*Math.sin(t/45+e.phase))*clampV32(speed/Math.max(.001,e.maxSpeed),.2,1);c.globalCompositeOperation='lighter';c.fillStyle=`rgba(100,220,255,${.35+.45*flame})`;c.shadowColor=p.stroke;c.shadowBlur=16;c.beginPath();c.moveTo(-r*.32,-r*.55);c.lineTo(0,-r*(1.15+flame*.55));c.lineTo(r*.32,-r*.55);c.closePath();c.fill();c.globalCompositeOperation='source-over';
+    const hit=e.hitFlash>t;c.shadowColor=hit?'#fff2a8':p.stroke;c.shadowBlur=hit?24:14;c.fillStyle=hit?'#fff4b8':p.fill;c.strokeStyle=p.stroke;c.lineWidth=2;c.beginPath();c.moveTo(0,r);c.lineTo(-r*1.1,-r*.65);c.lineTo(-r*.35,-r*.45);c.lineTo(0,-r);c.lineTo(r*.35,-r*.45);c.lineTo(r*1.1,-r*.65);c.closePath();c.fill();c.stroke();c.fillStyle=p.core;c.beginPath();c.ellipse(0,-r*.12,r*.25,r*.35,0,0,Math.PI*2);c.fill();
+    c.fillStyle='#ffd66d';c.fillRect(-r*.75,-r*.36,r*.24,r*.12);c.fillRect(r*.51,-r*.36,r*.24,r*.12);const W=r*1.55;c.fillStyle='rgba(1,7,15,.8)';c.fillRect(-W/2,r*1.15,W,4);c.fillStyle=p.stroke;c.fillRect(-W/2,r*1.15,W*(e.hp/e.maxHp),4);c.restore();
+  };
+
+  const baseDrawBossShipV32=drawBossShip;
+  drawBossShip=function(c,w,h,b,t){
+    if(b.hiddenUntil&&t<b.hiddenUntil)return;const x=b.x*w,y=b.y*h,r=b.r*Math.min(w,h),form=b.form||1;c.save();c.translate(x,y);c.rotate(b.heading||0);
+    const speed=Math.hypot(b.vx||0,b.vy||0),ratio=clampV32(speed/Math.max(.001,b.maxSpeed||.4),.2,1),pulse=.7+.3*Math.sin(t/90),hit=b.hitFlash>t;
+    c.globalCompositeOperation='lighter';for(const side of[-.38,.38]){const flame=r*(.65+ratio*.85)*( .82+.18*Math.sin(t/38+side));c.fillStyle=b.isLevelBoss?'rgba(255,170,60,.62)':'rgba(115,210,255,.66)';c.shadowColor=b.isLevelBoss?'#ff9f43':'#6ee7ff';c.shadowBlur=22;c.beginPath();c.moveTo(side*r-r*.15,-r*.42);c.lineTo(side*r,-r*.42-flame);c.lineTo(side*r+r*.15,-r*.42);c.closePath();c.fill();}c.globalCompositeOperation='source-over';
+    c.shadowColor=hit?'#fff':(b.isLevelBoss?'#ff9f43':'#ff5dcb');c.shadowBlur=hit?36:26+form*4;c.fillStyle=hit?'#fff4ff':(b.isLevelBoss?['#45230b','#143e4b','#173f20','#4a2510','#321552'][Math.min(4,(b.sector||1)-1)]:['#4d174f','#43145e','#261a70','#5a0d35'][form-1]);
+    c.strokeStyle=b.isLevelBoss?['#ffb552','#65d7ff','#8fff82','#ffd05f','#d999ff'][Math.min(4,(b.sector||1)-1)]:['#ff87dd','#b975ff','#61a6ff','#ff456c'][form-1];c.lineWidth=3;c.beginPath();const points=b.isLevelBoss?10:8+form*2;for(let i=0;i<points;i++){const a=-Math.PI/2+i*Math.PI*2/points,rr=r*(i%2?1:.56+form*.04),px=Math.cos(a)*rr,py=Math.sin(a)*rr*.65;i?c.lineTo(px,py):c.moveTo(px,py);}c.closePath();c.fill();c.stroke();
+    c.fillStyle=b.isLevelBoss?`rgba(255,185,80,${pulse})`:`rgba(255,${70+form*28},220,${pulse})`;c.beginPath();c.arc(0,0,r*.28,0,Math.PI*2);c.fill();c.strokeStyle='rgba(255,255,255,.45)';for(let i=0;i<(b.isLevelBoss?2:form+1);i++){c.beginPath();c.ellipse(0,0,r*(.42+i*.13),r*(.18+i*.05),t*.0005*(i%2?1:-1),0,Math.PI*2);c.stroke();}c.restore();
+  };
+
+  const baseUpdateBossHudV32=updateBossHud;
+  updateBossHud=function(){
+    const b=state.space?.boss;if(!b){bossHud.hidden=true;return;}if(!b.isLevelBoss)return baseUpdateBossHudV32();
+    bossHud.hidden=false;bossFormText.textContent=`JEFE DEL MUNDO ${b.sector}`;bossNameText.textContent=b.name||levelBossNamesV32[Math.max(0,b.sector-1)];const pct=Math.max(0,b.hp/b.maxHp);bossHealthFill.style.transform=`scaleX(${pct})`;bossHealthText.textContent=`${Math.ceil(pct*100)}%`;
+  };
+
+  const baseUpdateFlightHudV32=updateFlightHud;
+  updateFlightHud=function(s,safe){
+    baseUpdateFlightHudV32(s,safe);const b=s?.boss;if(s?.stage==='boss'&&b?.isLevelBoss){els.flightFill.style.width=`${Math.max(0,(1-b.hp/b.maxHp)*100)}%`;els.flightTitle.textContent=`JEFE DEL MUNDO ${b.sector} · ${b.name}`;els.flightTarget.textContent=`VIDA ${Math.ceil(b.hp)}/${b.maxHp}`;els.densityText.textContent=`MUNDO ${b.sector}`;els.asteroidText.textContent='DISPAROS FUERTES';els.warpText.textContent=`VIDA ${state.energy.toFixed(1)}/5`;phaseText&&(phaseText.textContent='ACELERACIÓN E INERCIA');enemyText&&(enemyText.textContent='JEFE ACTIVO');updateBossHud();}
+  };
+
+  const baseLaunchGameV32=launchGame;
+  launchGame=async function(){await baseLaunchGameV32();if(state.startedAt&&!state.completed&&state.stats)state.stats.stageBossesDefeated=0;};
+
+  showHow=function(){showModal('Cómo jugar',`<ol><li><b>Elige mínimo 2 y máximo 3 temas principales.</b> Cada tema seleccionado se convierte en un mundo.</li><li>Los asteroides azules contienen una pregunta normal. Los astros brillantes contienen una pregunta avanzada que puede equivaler a 2 o 3 asteroides azules.</li><li>Al completar las preguntas aparece una <b>escuadra armada</b>. Sus naves son moderadamente rápidas, aceleran, conservan inercia al girar y disparan según su trayectoria.</li><li>Los impactos enemigos reducen vida y <b>puntos de combate</b>, pero nunca descuentan la nota académica.</li><li>Después de destruir la escuadra aparece el <b>jefe de ese mundo</b>. Es más grande, más rápido, tiene más vida y combina disparos dirigidos, abanicos y ráfagas laterales. Sus ataques también quitan puntos, no nota.</li><li>El mundo solamente se supera y la nota se fija después de derrotar también a su jefe.</li><li>El botón <b>FINALIZAR</b> permanece visible para cerrar anticipadamente el intento y enviar a Brightspace la nota acumulada.</li><li><b>Integridad:</b> la quinta incidencia anula el intento y envía 0.00 a Brightspace.</li></ol>`);};
+
+
+  /* ===== v3.4 · Matrices legibles, pausa real, rendimiento adaptativo y nota fija por mundo ===== */
+  const perfV34={
+    low:(navigator.hardwareConcurrency||8)<=4||Number(navigator.deviceMemory||8)<=4,
+    fps:((navigator.hardwareConcurrency||8)<=4||Number(navigator.deviceMemory||8)<=4)?40:55,
+    maxEnemyShots:((navigator.hardwareConcurrency||8)<=4||Number(navigator.deviceMemory||8)<=4)?52:84,
+    maxEffects:((navigator.hardwareConcurrency||8)<=4||Number(navigator.deviceMemory||8)<=4)?18:32,
+    stars:((navigator.hardwareConcurrency||8)<=4||Number(navigator.deviceMemory||8)<=4)?62:96
+  };
+  let lastRenderV34=0,manualPauseV34=false,manualResumePhaseV34='flight',manualPausedAtV34=0;
+  const pauseBtnV34=document.getElementById('pauseBtn'),pauseOverlayV34=document.getElementById('pauseOverlay'),resumeBtnV34=document.getElementById('resumeBtn');
+
+  function selectedWorldCountV34(){return Math.max(1,sectorNames.length||state.selectedMainTopics?.length||1);}
+  function worldFloorV34(completed=state.securedLevels||0){return Math.min(5,(5/selectedWorldCountV34())*Math.max(0,Math.min(selectedWorldCountV34(),completed)));}
+  gradingText=function(){const m=selectedWorldCountV34(),k=Math.max(0,state.securedLevels||0);return `${m} mundos seleccionados · piso fijado tras ${k} mundo${k===1?'':'s'}: ${worldFloorV34(k).toFixed(2)} / 5.00 · campaña completa: 5.00`;};
+  lockClearedLevel=function(level){
+    const completed=Math.max(state.securedLevels||0,Math.min(selectedWorldCountV34(),Number(level)||0));
+    const floor=worldFloorV34(completed);
+    state.securedLevels=completed;state.securedUnits=floor;state.score=Math.max(floor,Math.min(5,state.score));
+    toast(`Mundo ${completed}/${selectedWorldCountV34()} superado: nota mínima fijada en ${floor.toFixed(2)} / 5.00.`);updateHUD();saveProgress();
+  };
+
+  const finishMissionBaseV34=finishMission;
+  finishMission=function(manual){
+    if(!state.disqualified){
+      if(!manual&&state.stats?.bossDefeated){state.securedLevels=selectedWorldCountV34();state.securedUnits=5;state.score=5;}
+      else state.score=Math.max(state.score,worldFloorV34());
+    }
+    finishMissionBaseV34(manual);
+  };
+
+  function shiftTimeV34(ms){
+    if(!ms||ms<0)return;const s=state.space;if(s){
+      for(const k of ['safeUntil','blackHoleAt','invulnerableUntil','nextCoreAt','checkpointAt','muzzleUntil','flashUntil'])if(Number.isFinite(s[k]))s[k]+=ms;
+      for(const e of s.enemies||[])for(const k of ['fireAt','portalAt','hiddenUntil','targetAt','nextBurst'])if(Number.isFinite(e[k]))e[k]+=ms;
+      if(s.boss)for(const k of ['fireAt','portalAt','hiddenUntil','targetAt','transformUntil'])if(Number.isFinite(s.boss[k]))s.boss[k]+=ms;
+    }
+    if(state.mathShot?.start)state.mathShot.start+=ms;if(state.rewind?.start)state.rewind.start+=ms;
+    questionStart+=ms;
+  }
+  function pauseGameV34(){
+    if(!state.startedAt||state.completed||manualPauseV34||!els.modal.hidden)return;
+    if(!['flight','enemies','boss','question'].includes(state.phase)){toast('La pausa estará disponible al terminar esta transición.');return;}
+    manualPauseV34=true;manualResumePhaseV34=state.phase==='paused'?(state.phaseBeforePause||'flight'):state.phase;manualPausedAtV34=performance.now();
+    state.phaseBeforePause=manualResumePhaseV34;state.phase='paused';Object.keys(held).forEach(k=>held[k]=false);
+    if(pauseOverlayV34)pauseOverlayV34.hidden=false;if(pauseBtnV34){pauseBtnV34.textContent='▶ REANUDAR';pauseBtnV34.setAttribute('aria-pressed','true');}
+  }
+  function resumeGameV34(){
+    if(!manualPauseV34||state.completed)return;const elapsed=performance.now()-manualPausedAtV34;shiftTimeV34(elapsed);manualPauseV34=false;
+    state.phase=manualResumePhaseV34||state.phaseBeforePause||'flight';state.lastFrame=performance.now();
+    if(pauseOverlayV34)pauseOverlayV34.hidden=true;if(pauseBtnV34){pauseBtnV34.textContent='⏸ PAUSA';pauseBtnV34.setAttribute('aria-pressed','false');}
+    resizeAll();
+  }
+  pauseBtnV34?.addEventListener('click',()=>manualPauseV34?resumeGameV34():pauseGameV34());
+  resumeBtnV34?.addEventListener('click',resumeGameV34);
+
+  const onKeyBaseV34=onKey;
+  onKey=function(e){
+    if((e.key==='p'||e.key==='P')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!els.game.hidden){e.preventDefault();manualPauseV34?resumeGameV34():pauseGameV34();return;}
+    if(manualPauseV34)return;onKeyBaseV34(e);
+  };
+  const fullscreenBaseV34=handleFullscreenChange;
+  handleFullscreenChange=function(){
+    if(manualPauseV34&&isFullscreen()){els.fullscreenGate.hidden=true;requestAnimationFrame(resizeAll);return;}
+    if(manualPauseV34&&!isFullscreen()){manualPauseV34=false;if(pauseOverlayV34)pauseOverlayV34.hidden=true;if(pauseBtnV34){pauseBtnV34.textContent='⏸ PAUSA';pauseBtnV34.setAttribute('aria-pressed','false');}state.phase=manualResumePhaseV34||'flight';}
+    fullscreenBaseV34();
+  };
+  const integrityStrikeBaseV34=integrityStrike;
+  integrityStrike=function(reason,detail=''){
+    if(manualPauseV34){manualPauseV34=false;if(pauseOverlayV34)pauseOverlayV34.hidden=true;if(pauseBtnV34){pauseBtnV34.textContent='⏸ PAUSA';pauseBtnV34.setAttribute('aria-pressed','false');}state.phase=manualResumePhaseV34||'flight';}
+    integrityStrikeBaseV34(reason,detail);
+  };
+  const launchBaseV34=launchGame;
+  launchGame=async function(){manualPauseV34=false;lastRenderV34=0;if(pauseOverlayV34)pauseOverlayV34.hidden=true;if(pauseBtnV34){pauseBtnV34.textContent='⏸ PAUSA';pauseBtnV34.disabled=false;}await launchBaseV34();};
+
+  function isMatrixQuestionV34(q){
+    const text=`${q?.badge||''} ${q?.prompt||''} ${q?.instruction||''}`;
+    return q?.visual?.kind==='matrix'||/matriz|matrices|determinante|gauss|transpuesta|fila.?columna|\\begin\{(?:bmatrix|pmatrix|vmatrix|array)\}/i.test(text);
+  }
+  const renderQuestionBaseV34=renderQuestion;
+  renderQuestion=function(){renderQuestionBaseV34();const q=state.currentChallenge?.q||questions[state.questionIndex];questionPanel.classList.toggle('matrix-question',isMatrixQuestionV34(q));};
+  const shouldShowMiniBaseV34=shouldShowMini;
+  shouldShowMini=function(q){return isMatrixQuestionV34(q)?false:shouldShowMiniBaseV34(q);};
+  const revealChallengeBaseV34=revealChallenge;
+  revealChallenge=async function(){
+    await revealChallengeBaseV34();const q=state.currentChallenge?.q||questions[state.questionIndex],matrix=isMatrixQuestionV34(q);
+    questionPanel.classList.toggle('matrix-question',matrix);
+    if(matrix&&els.mini){els.mini.hidden=true;els.mini.style.height='0px';}
+    questionPanel.scrollTop=0;
+  };
+
+  const drawDeepSpaceBaseV34=drawDeepSpace;
+  drawDeepSpace=function(c,w,h,t,s,safe){
+    if(!perfV34.low)return drawDeepSpaceBaseV34(c,w,h,t,s,safe);
+    c.fillStyle=safe?'#052638':'#030916';c.fillRect(0,0,w,h);const drift=(s.route*.004)%1;
+    for(let i=0;i<perfV34.stars;i++){const seed=(i*71.37)%997,x=((seed*37)%997)/997*w,y=((seed*17)%997)/997*h,yy=(y+drift*h*(1+(i%4)*.1))%h;c.fillStyle=i%9===0?'rgba(105,205,255,.62)':`rgba(220,240,255,${.16+(i%4)*.06})`;c.fillRect(x,yy,i%11===0?2:1,i%11===0?5:2);}
+  };
+  const drawAsteroidBaseV34=drawAsteroid;
+  drawAsteroid=function(c,w,h,a,t){
+    if(!perfV34.low)return drawAsteroidBaseV34(c,w,h,a,t);const x=a.x*w,y=a.y*h,r=a.r*Math.min(w,h);if(r<2)return;
+    const comet=(state.space?.sector>=sectorNames.length)&&a.core,core=a.core;c.save();c.translate(x,y);c.rotate(a.rot);c.fillStyle=comet?'#bf3f2c':core?'#164f67':'#66564f';c.strokeStyle=comet?'#ffb078':core?'#56dfff':'#b7957c';c.lineWidth=Math.max(1,r*.04);c.beginPath();
+    for(let i=0;i<10;i++){const ang=i*Math.PI*2/10,noise=.78+((Math.sin(a.seed+i*4.3)+1)*.11),px=Math.cos(ang)*r*noise,py=Math.sin(ang)*r*noise;i?c.lineTo(px,py):c.moveTo(px,py);}c.closePath();c.fill();c.stroke();
+    if(core){c.fillStyle=comet?'#ffd8a1':'#aaf5ff';c.beginPath();c.arc(0,0,r*.28,0,Math.PI*2);c.fill();}c.restore();
+  };
+  const drawEnemyProjectilesBaseV34=drawEnemyProjectiles;
+  drawEnemyProjectiles=function(c,w,h){
+    if(!perfV34.low)return drawEnemyProjectilesBaseV34(c,w,h);const s=state.space;if(!s)return;c.save();
+    for(const p of s.enemyProjectiles.slice(-perfV34.maxEnemyShots)){c.fillStyle=p.kind==='boss'?'#ff70d5':'#ffc35a';c.beginPath();c.arc(p.x*w,p.y*h,Math.max(2.5,p.r*Math.min(w,h)),0,Math.PI*2);c.fill();}c.restore();
+  };
+  const addExplosionBaseV34=addExplosion;
+  addExplosion=function(x,y,r,kind){const arr=state.space?.explosions;if(arr&&arr.length>=perfV34.maxEffects)arr.splice(0,arr.length-perfV34.maxEffects+1);addExplosionBaseV34(x,y,r,kind);};
+  const addScoreFloatBaseV34=addScoreFloat;
+  addScoreFloat=function(text,x,y,kind=''){const arr=state.space?.scorePopups;if(arr&&arr.length>=perfV34.maxEffects)arr.splice(0,arr.length-perfV34.maxEffects+1);addScoreFloatBaseV34(text,x,y,kind);};
+  const spawnEnemyShotBaseV34=spawnEnemyShot;
+  spawnEnemyShot=function(source,shipX,shipY,boss){const arr=state.space?.enemyProjectiles;if(arr&&arr.length>=perfV34.maxEnemyShots)return;spawnEnemyShotBaseV34(source,shipX,shipY,boss);if(arr&&arr.length>perfV34.maxEnemyShots)arr.splice(0,arr.length-perfV34.maxEnemyShots);};
+  const spawnBossPatternBaseV34=spawnBossPattern;
+  spawnBossPattern=function(b,shipX,shipY){const arr=state.space?.enemyProjectiles;if(arr&&arr.length>=perfV34.maxEnemyShots-8)return;spawnBossPatternBaseV34(b,shipX,shipY);if(arr&&arr.length>perfV34.maxEnemyShots)arr.splice(0,arr.length-perfV34.maxEnemyShots);};
+
+  animate=function(t){
+    if(els.game.hidden)return;const minStep=1000/perfV34.fps;if(lastRenderV34&&t-lastRenderV34<minStep){raf=requestAnimationFrame(animate);return;}
+    const elapsed=lastRenderV34?t-lastRenderV34:minStep;lastRenderV34=t;const dt=Math.min(.033,elapsed/1000);state.lastFrame=t;
+    drawScene(questions[state.questionIndex]||questions[questions.length-1],t,manualPauseV34?0:dt);
+    if(state.phase==='math-shot'&&state.mathShot&&t-state.mathShot.start>=state.mathShot.duration)finishMathShot();
+    if(state.phase==='rewind'&&state.rewind&&t-state.rewind.start>=state.rewind.duration)finishRewind();
+    updateCombatHud(t);raf=requestAnimationFrame(animate);
+  };
+
+
+  /* ===== v3.7 · Parametrización dinámica y aislamiento estricto por mundo ===== */
+  function nextQuestionSeedV36(q,scope='general'){
+    state.questionVariantSerial=(state.questionVariantSerial||0)+1;
+    const scopeHash=[...String(scope)].reduce((h,ch)=>Math.imul(h^ch.charCodeAt(0),16777619),2166136261)|0;
+    return ((state.seed||20260731)^Math.imul(state.questionVariantSerial,0x9E3779B9)^Math.imul(Number(q?.sourceId||q?.id||1),0x85EBCA6B)^scopeHash)>>>0;
+  }
+  function freshQuestionV36(q,scope='general'){
+    if(!q)return q;
+    let fresh=cloneQuestion(q),attempt=0;
+    do{fresh=NVQuestions.regenerate?.(q,nextQuestionSeedV36(q,`${scope}-${attempt}`))||cloneQuestion(q);attempt++;}while(fresh.prompt===q.prompt&&attempt<24);
+    fresh._hintUsed=false;fresh._attempts=0;
+    return fresh;
+  }
+  function replaceCurrentMissionQuestionV36(fresh){
+    if(!fresh||state.questionIndex<0||state.questionIndex>=questions.length)return;
+    const old=questions[state.questionIndex];
+    fresh.id=old.id;fresh.sourceId=old.sourceId;fresh.sourceWorld=old.sourceWorld;fresh.sector=old.sector;fresh.scene=old.scene;fresh.gradeValue=old.gradeValue;fresh.topicLabel=old.topicLabel;
+    questions[state.questionIndex]=fresh;
+  }
+
+  const triggerCollisionBaseV36=triggerCollision;
+  triggerCollision=function(kind,obj){
+    triggerCollisionBaseV36(kind,obj);
+    const ch=state.currentChallenge;
+    if(!ch||ch.kind!==kind)return;
+    if(kind==='asteroid'){
+      const fresh=freshQuestionV36(ch.q,'asteroid');replaceCurrentMissionQuestionV36(fresh);ch.q=fresh;
+    }else if(kind==='blackhole'){
+      ch.q=freshQuestionV36(ch.q,'blackhole');
+    }
+  };
+
+  const selectAstroQuestionBaseV36=selectAstroQuestion;
+  selectAstroQuestion=function(sector,multiplier){
+    let q=selectAstroQuestionBaseV36(sector,multiplier);if(!q)return q;
+    const original={id:q.id,sector:q.sector,badge:q.badge,sourceWorld:q.sourceWorld};
+    let fresh=freshQuestionV36(q,`astro-${multiplier}`);
+    fresh.id=original.id;fresh.sector=original.sector;fresh.sourceWorld=original.sourceWorld;fresh.badge=original.badge;
+    if(!questionMatchesSectorWorld(fresh,sector)){
+      console.warn('La regeneración intentó cambiar el tema del astro; se regeneró dentro del mundo correcto.',{sector,expectedWorld:sourceWorldForSector(sector),received:fresh});
+      const safe=fallbackQuestionForSectorWorld(sector,multiplier>=3);
+      if(safe){fresh=freshQuestionV36(safe,`astro-safe-${multiplier}`);fresh.id=original.id;fresh.sector=sector;fresh.sourceWorld=sourceWorldForSector(sector);fresh.badge=original.badge;}
+    }
+    return fresh;
+  };
+
+  const triggerBossGateBaseV36=triggerBossGate;
+  triggerBossGate=function(sector,resumePhase,bossLabel){
+    triggerBossGateBaseV36(sector,resumePhase,bossLabel);
+    const ch=state.currentChallenge;if(ch?.kind==='bossgate')ch.q=freshQuestionV36(ch.q,`bossgate-${resumePhase}`);
+  };
+  retryBossGate=function(){
+    const ch=state.currentChallenge;if(!ch||ch.kind!=='bossgate')return;
+    const pool=ch.resumePhase==='boss'?bossQuestions:bossQuestions.filter(q=>q.sector===ch.sector);if(!pool.length)return;
+    state.bossQuestionSerial=(state.bossQuestionSerial||0)+1;
+    ch.q=freshQuestionV36(pool[(state.bossQuestionSerial-1)%pool.length],`boss-retry-${ch.resumePhase}`);
+    ch.q.sector=ch.sector;selected=null;answerLocked=true;revealChallenge();
+  };
+
+  const triggerLifesaverBaseV36=triggerLifesaver;
+  triggerLifesaver=function(resumePhase){
+    triggerLifesaverBaseV36(resumePhase);
+    const ch=state.currentChallenge;if(ch?.kind!=='lifesaver')return;
+    ch.questions=ch.questions.map((q,i)=>{const fresh=freshQuestionV36(q,`lifesaver-${i+1}`);fresh.sector=ch.sector;return fresh;});
+    ch.q=ch.questions[ch.index||0];
+  };
+
+  const revealChallengeBaseV36=revealChallenge;
+  revealChallenge=async function(){
+    await revealChallengeBaseV36();
+    const ch=state.currentChallenge;if(ch?.kind!=='blackhole'||state.completed)return;
+    els.qCount.textContent=`PORTAL · ${mainTopicTitle(WORLD_DEFINITIONS.find(x=>x.id===sourceWorldForSector(ch.sector))||{name:sectorNames[ch.sector-1]})}`;
+    els.qBadge.textContent='ACIERTA: CÁMARA DE TRES ASTROS · ERROR: SOLO DESAPARECE EL PORTAL';
+    els.instruction.textContent='Resuelve el reto con los nuevos valores. Si aciertas aparecerán tres astros al mismo tiempo; si fallas, el agujero negro simplemente desaparecerá.';
+    setFeedback('Los datos y el procedimiento del portal cambian en cada encuentro. No hay descuento de nota ni de vida por fallar.','neutral');
+    await typeset();
+  };
+
+  const submitAnswerBaseV36=submitAnswer;
+  submitAnswer=function(){
+    const ch=state.currentChallenge;
+    if(ch?.kind!=='blackhole')return submitAnswerBaseV36();
+    if(answerLocked)return;const q=ch.q;let value=selected;
+    if(q.type==='numeric'){const inp=$('#numericAnswer');if(!inp||inp.value===''){toast('Escribe una respuesta numérica.');return;}value=Number(inp.value);}
+    if(value===null){toast('Selecciona una respuesta.');return;}
+    q._attempts=(q._attempts||0)+1;const correct=isCorrectAnswer(q,value);answerLocked=true;els.submit.disabled=true;els.hint.disabled=true;
+    if(correct){
+      state.xp+=120;state.stats.blackHoleSuccess++;
+      state.answers.push(recordAnswer(q,true,value,0,'Agujero negro'));
+      markOptions(q,true,value);setFeedback(`<b>Salto autorizado.</b> Entrarás a una cámara especial con <b>tres astros simultáneos</b>. Los valores y procedimientos de sus retos serán diferentes.<br>${q.explanation}`,'good');beep(980,.24);updateHUD();saveProgress();
+      offerContinue(()=>resolveBlackHole(true),'CONTINUAR A LA CÁMARA DE TRES ASTROS');
+    }else{
+      state.stats.blackHoleFails++;
+      state.answers.push(recordAnswer(q,false,value,0,'Agujero negro'));
+      markOptions(q,false,value);setFeedback(`<b>Respuesta incorrecta.</b> El agujero negro desaparece. No pierdes nota ni vida y continúas en la ruta normal.<br>${q.explanation}`,'bad');beep(95,.30);updateHUD();saveProgress();
+      offerContinue(()=>resolveBlackHole(false),'CONTINUAR · EL PORTAL DESAPARECE');
+    }
+  };
+
+  resolveBlackHole=function(correct){
+    const ch=state.currentChallenge,s=state.space;if(!ch||!s)return;
+    s.blackHoles=(s.blackHoles||[]).filter(b=>b.id!==ch.objectId);state.blackHoleIndex++;
+    restoreCollisionPoint(ch.snapshot);s.invulnerableUntil=performance.now()+1800;
+    state.currentChallenge=null;hideChallengeForAction();
+    if(correct){
+      s.asteroids=[];s.blackHoles=[];s.guidedAstro=null;spawnPortalAstroSet(performance.now());
+      activateFlight('SALTO EXITOSO · CÁMARA DE TRES ASTROS');
+    }else{
+      s.blackHoleAt=performance.now()+12000+Math.random()*5000;
+      activateFlight('PORTAL FALLIDO · EL AGUJERO NEGRO DESAPARECIÓ');
+    }
+  };
+
+  const launchBaseV36=launchGame;
+  launchGame=async function(){state.questionVariantSerial=0;await launchBaseV36();};
+
+  showHow=function(){showModal('Cómo jugar',`<ol><li><b>Elige mínimo 2 y máximo 3 mundos.</b></li><li>Cada mundo se completa al resolver sus pruebas, destruir la escuadra y derrotar al jefe.</li><li>Al superar ${math(String.raw`k`)} mundos de un total de ${math(String.raw`m`)}, la nota mínima queda fijada en ${math(String.raw`5k/m`)} y no puede disminuir.</li><li>Al completar toda la campaña y derrotar al jefe final, la nota pasa automáticamente a <b>5.00</b>.</li><li>Los ataques enemigos reducen vida y puntos de combate, pero no la nota.</li><li>Usa <b>PAUSA</b> o la tecla <b>P</b> para detener nave, enemigos, disparos y cronómetros.</li><li>El botón <b>FINALIZAR</b> envía a Brightspace la nota acumulada hasta ese momento.</li><li>La quinta incidencia de integridad anula el intento con nota 0.00.</li></ol>`);};
+
+
+  /* ===== v3.8 · Auditoría y aislamiento total de preguntas por mundo ===== */
+  function strictPoolForSectorV38(pool,sector){
+    return questionsForSectorWorld(pool,sector);
+  }
+  function strictQuestionV38(candidate,sector,scope='strict',preferBoss=false){
+    const seq=Math.max(1,Number(sector)||1),expectedWorld=sourceWorldForSector(seq);
+    let base=candidate;
+    if(!questionMatchesSectorWorld(base,seq))base=fallbackQuestionForSectorWorld(seq,preferBoss);
+    if(!base)return null;
+    let fresh=base,attempt=0;
+    do{
+      fresh=freshQuestionV36(base,`${scope}-${attempt}`);
+      fresh.sector=seq;fresh.sourceWorld=expectedWorld;
+      attempt++;
+    }while(!questionMatchesSectorWorld(fresh,seq)&&attempt<24);
+    if(!questionMatchesSectorWorld(fresh,seq)){
+      const safe=fallbackQuestionForSectorWorld(seq,preferBoss);
+      if(!safe)return null;
+      fresh=cloneQuestion(safe);fresh.sector=seq;fresh.sourceWorld=expectedWorld;
+    }
+    return fresh;
+  }
+  function repairQuestionPoolV38(pool,preferBoss=false,label='pool'){
+    return (pool||[]).map((q,i)=>{
+      const sector=Math.max(1,Number(q.sector)||1);
+      if(questionMatchesSectorWorld(q,sector))return q;
+      const replacement=strictQuestionV38(q,sector,`${label}-${i}`,preferBoss);
+      console.warn('Pregunta ajena al mundo reemplazada automáticamente.',{label,sector,expectedWorld:sourceWorldForSector(sector),original:q,replacement});
+      if(!replacement)return q;
+      replacement.id=q.id;replacement.sourceId=q.sourceId||q.id;replacement.gradeValue=q.gradeValue;replacement.scene=q.scene||replacement.scene;replacement.topicLabel=q.topicLabel||replacement.topicLabel;
+      return replacement;
+    });
+  }
+  function auditActiveMissionV38(){
+    questions=repairQuestionPoolV38(questions,false,'principal');
+    blackHoleQuestions=repairQuestionPoolV38(blackHoleQuestions,false,'portal');
+    bossQuestions=repairQuestionPoolV38(bossQuestions,true,'jefe');
+    const issues=[];
+    for(const [label,pool] of [['principal',questions],['portal',blackHoleQuestions],['jefe',bossQuestions]]){
+      for(const q of pool||[]){if(!questionMatchesSectorWorld(q,q.sector))issues.push({label,id:q.id,sector:q.sector,sourceWorld:q.sourceWorld,topic:q.topic});}
+    }
+    state.questionIsolationAudit={checkedAt:new Date().toISOString(),issues:issues.length,worlds:[...(state.selectedWorlds||[])]};
+    if(issues.length)console.error('La auditoría de aislamiento detectó preguntas no reparadas.',issues);
+    return issues.length===0;
+  }
+
+  const triggerCollisionBaseV38=triggerCollision;
+  triggerCollision=function(kind,obj){
+    triggerCollisionBaseV38(kind,obj);
+    const ch=state.currentChallenge;if(!ch||ch.kind!==kind)return;
+    const sector=ch.sector||state.space?.sector||ch.q?.sector||1;
+    if(kind==='asteroid'){
+      const fresh=strictQuestionV38(ch.q,sector,'asteroid-runtime',false);if(!fresh)return;
+      const old=questions[state.questionIndex];if(old){fresh.id=old.id;fresh.sourceId=old.sourceId;fresh.gradeValue=old.gradeValue;fresh.scene=old.scene;fresh.topicLabel=old.topicLabel;questions[state.questionIndex]=fresh;}ch.q=fresh;
+    }else if(kind==='blackhole'){
+      ch.q=strictQuestionV38(ch.q,sector,'portal-runtime',false)||ch.q;
+    }
+  };
+
+  const selectAstroQuestionBaseV38=selectAstroQuestion;
+  selectAstroQuestion=function(sector,multiplier){
+    const candidate=selectAstroQuestionBaseV38(sector,multiplier);
+    const fresh=strictQuestionV38(candidate,sector,`astro-runtime-${multiplier}`,multiplier>=3);
+    if(!fresh)return null;
+    fresh.id=candidate?.id||`ASTRO-${sector}-${state.astroQuestionSerial||1}`;
+    fresh.badge=`ASTRO BRILLANTE · VALOR ${multiplier} PRUEBAS`;
+    fresh.sector=sector;fresh.sourceWorld=sourceWorldForSector(sector);
+    return fresh;
+  };
+
+  const triggerBossGateBaseV38=triggerBossGate;
+  triggerBossGate=function(sector,resumePhase,bossLabel){
+    triggerBossGateBaseV38(sector,resumePhase,bossLabel);
+    const ch=state.currentChallenge;if(ch?.kind!=='bossgate')return;
+    const strictPool=strictPoolForSectorV38(bossQuestions,sector);
+    const candidate=strictPool.length?strictPool[((state.bossQuestionSerial||1)-1)%strictPool.length]:ch.q;
+    ch.q=strictQuestionV38(candidate,sector,`bossgate-${resumePhase}`,true)||ch.q;
+    ch.q.sector=sector;ch.q.sourceWorld=sourceWorldForSector(sector);
+  };
+  retryBossGate=function(){
+    const ch=state.currentChallenge;if(!ch||ch.kind!=='bossgate')return;
+    const sector=ch.sector||state.space?.sector||1,pool=strictPoolForSectorV38(bossQuestions,sector);
+    state.bossQuestionSerial=(state.bossQuestionSerial||0)+1;
+    const candidate=pool.length?pool[(state.bossQuestionSerial-1)%pool.length]:fallbackQuestionForSectorWorld(sector,true);
+    const fresh=strictQuestionV38(candidate,sector,`boss-retry-${ch.resumePhase}`,true);if(!fresh)return;
+    ch.q=fresh;selected=null;answerLocked=true;revealChallenge();
+  };
+
+  const triggerLifesaverBaseV38=triggerLifesaver;
+  triggerLifesaver=function(resumePhase){
+    triggerLifesaverBaseV38(resumePhase);
+    const ch=state.currentChallenge;if(ch?.kind!=='lifesaver')return;
+    const sector=ch.sector||state.space?.sector||1,source=resumePhase==='boss'?bossQuestions:blackHoleQuestions;
+    const pool=strictPoolForSectorV38(source,sector);
+    const firstBase=pool.length?pool[(state.lifesaverSerial||0)%pool.length]:fallbackQuestionForSectorWorld(sector,resumePhase==='boss');
+    const secondBase=pool.length?pool[((state.lifesaverSerial||0)+1)%pool.length]:fallbackQuestionForSectorWorld(sector,resumePhase==='boss');
+    const first=strictQuestionV38(firstBase,sector,`lifesaver-${resumePhase}-1`,resumePhase==='boss');
+    const second=strictQuestionV38(secondBase||firstBase,sector,`lifesaver-${resumePhase}-2`,resumePhase==='boss');
+    if(first&&second){ch.questions=[first,second];ch.index=0;ch.q=first;}
+  };
+
+  const revealChallengeBaseV38=revealChallenge;
+  revealChallenge=async function(){
+    const ch=state.currentChallenge;
+    if(ch?.q){
+      const sector=ch.sector||state.space?.sector||ch.q.sector||1;
+      const preferBoss=ch.kind==='bossgate'||(ch.kind==='lifesaver'&&ch.resumePhase==='boss')||(ch.kind==='astro'&&ch.multiplier>=3);
+      const checked=strictQuestionV38(ch.q,sector,`pre-display-${ch.kind}`,preferBoss);
+      if(checked){
+        checked.id=ch.q.id;checked.badge=ch.q.badge;checked.gradeValue=ch.q.gradeValue;checked.scene=ch.q.scene;checked.topicLabel=ch.q.topicLabel;ch.q=checked;
+        if(ch.kind==='lifesaver'&&Array.isArray(ch.questions))ch.questions[ch.index||0]=checked;
+      }
+      if(!questionMatchesSectorWorld(ch.q,sector)){
+        console.error('Se bloqueó la presentación de una pregunta ajena al mundo activo.',{kind:ch.kind,sector,expectedWorld:sourceWorldForSector(sector),question:ch.q});
+        toast('La pregunta fue regenerada para conservar el tema del mundo actual.');
+        const emergency=fallbackQuestionForSectorWorld(sector,preferBoss);if(emergency){emergency.sector=sector;emergency.sourceWorld=sourceWorldForSector(sector);ch.q=emergency;}
+      }
+    }
+    return revealChallengeBaseV38();
+  };
+
+  const launchGameBaseV38=launchGame;
+  launchGame=async function(){
+    await launchGameBaseV38();
+    auditActiveMissionV38();
+  };
+
+
+  /* ===== v3.9 · Auditoría de puntaje positivo en retos y combate ===== */
+  function positiveNumberV39(value,fallback){
+    const n=Number(value);return Number.isFinite(n)&&n>0?n:fallback;
+  }
+  function auditScoringPlanV39(){
+    const g=state.grading;if(!g)return;
+    const worlds=Math.max(1,selectedWorldCountV34());
+    g.fleetGateValue=positiveNumberV39(g.fleetGateValue,.10/worlds);
+    g.shipValue=positiveNumberV39(g.shipValue,.30/Math.max(1,g.totalShips||worlds*6));
+    g.finalGateValue=positiveNumberV39(g.finalGateValue,.05);
+    g.bossFormValue=positiveNumberV39(g.bossFormValue,.10);
+    if(!g.questionValues||typeof g.questionValues!=='object')g.questionValues={};
+    for(const q of questions){
+      const current=Number(g.questionValues[q.id]);
+      if(!Number.isFinite(current)||current<=0)g.questionValues[q.id]=Math.max(.01,Number(q.gradeValue)||g.perTopic/Math.max(1,g.worldCounts?.[String(q.sourceWorld||q.sector)]||worldTarget(q.sector)));
+      q.gradeValue=g.questionValues[q.id];
+    }
+    state.stats.scoreAudit=state.stats.scoreAudit||{correctProtected:0,repairs:0,events:[]};
+  }
+  function expectedCorrectRewardV39(ch,q){
+    if(!ch||!q)return 0;
+    if(ch.kind==='asteroid')return Math.max(.01,mainQuestionReward(q));
+    if(ch.kind==='astro'){
+      const covered=coveredQuestionsForAstro(ch.sector,ch.multiplier),advance=Math.max(1,covered.length),factor=q._hintUsed?.75:1;
+      const raw=covered.length?covered.reduce((sum,item)=>sum+Math.max(.01,mainQuestionValue(item)),0):Math.max(.01,mainQuestionValue(questions[state.questionIndex]||q))*advance;
+      return Math.max(.01,raw*factor);
+    }
+    if(ch.kind==='bossgate')return ch.resumePhase==='boss'?positiveNumberV39(state.grading?.finalGateValue,.05):positiveNumberV39(state.grading?.fleetGateValue,.02);
+    return 0;
+  }
+  function submittedValueV39(q){
+    if(q?.type==='numeric'){
+      const input=document.getElementById('numericAnswer');
+      if(!input||input.value==='')return{available:false,value:null};
+      return{available:true,value:Number(input.value)};
+    }
+    return{available:selected!==null,value:selected};
+  }
+  function recordScoreAuditV39(kind,before,after,expected,repaired){
+    const audit=state.stats.scoreAudit||(state.stats.scoreAudit={correctProtected:0,repairs:0,events:[]});
+    audit.correctProtected++;
+    if(repaired)audit.repairs++;
+    audit.events.push({kind,before:Number(before.toFixed(4)),after:Number(after.toFixed(4)),expected:Number(expected.toFixed(4)),repaired:!!repaired,time:Date.now()});
+    if(audit.events.length>80)audit.events.splice(0,audit.events.length-80);
+  }
+  const submitAnswerBaseV39=submitAnswer;
+  submitAnswer=function(){
+    const ch=state.currentChallenge,q=ch?.q,submitted=submittedValueV39(q),before=Number(state.score)||0;
+    const track=!!q&&submitted.available&&['asteroid','astro','bossgate'].includes(ch?.kind);
+    const correct=track&&isCorrectAnswer(q,submitted.value),expected=correct?expectedCorrectRewardV39(ch,q):0,answersBefore=state.answers.length;
+    const result=submitAnswerBaseV39();
+    if(correct&&expected>0&&!state.disqualified){
+      const target=Math.min(5,Math.max(before,worldFloorV34(),before+expected));
+      const repaired=(Number(state.score)||0)+1e-9<target;
+      if(repaired)state.score=target;
+      if((Number(state.score)||0)+1e-9<before){state.score=before;}
+      const last=state.answers[state.answers.length-1];
+      if(last&&state.answers.length>answersBefore&&last.correct){
+        last.scoreBefore=Number(before.toFixed(4));last.scoreAfter=Number(state.score.toFixed(4));last.positiveAward=Math.max(0,Number((state.score-before).toFixed(4)));last.scoreProtected=true;
+      }
+      recordScoreAuditV39(ch.kind,before,state.score,expected,repaired);updateHUD();saveProgress();
+    }
+    return result;
+  };
+
+  const awardCombatScoreBaseV39=awardCombatScore;
+  awardCombatScore=function(delta,label,x=.5,y=.5,kind=''){
+    const safeDelta=positiveNumberV39(delta,.01),before=Number(state.score)||0;
+    const result=awardCombatScoreBaseV39(safeDelta,label,x,y,kind);
+    const target=Math.min(5,before+safeDelta);
+    if((Number(state.score)||0)+1e-9<target){state.score=target;state.stats.scoreAudit=state.stats.scoreAudit||{correctProtected:0,repairs:0,events:[]};state.stats.scoreAudit.repairs++;updateHUD();saveProgress();}
+    return result;
+  };
+
+  const lockClearedLevelBaseV39=lockClearedLevel;
+  lockClearedLevel=function(level){
+    const before=Number(state.score)||0,result=lockClearedLevelBaseV39(level);
+    if(!state.disqualified&&state.score+1e-9<before){state.score=before;updateHUD();saveProgress();}
+    return result;
+  };
+
+  const launchGameBaseV39=launchGame;
+  launchGame=async function(){
+    await launchGameBaseV39();
+    if(state.startedAt&&!state.completed){auditScoringPlanV39();updateHUD();saveProgress();}
+  };
+
 
   init();
+
+  /* ===== v3.10 · Asteroides cafés sin descuento y jefe obligatorio por mundo ===== */
+  function bossRegistryV310(){
+    if(!state.worldBossDefeated||typeof state.worldBossDefeated!=='object')state.worldBossDefeated={};
+    if(!state.worldBossStarted||typeof state.worldBossStarted!=='object')state.worldBossStarted={};
+    return state.worldBossDefeated;
+  }
+  function worldBossIsDefeatedV310(world){
+    const registry=bossRegistryV310(),last=selectedWorldCountV34();
+    return !!registry[world]||(world===last&&!!state.stats?.bossDefeated);
+  }
+  function markWorldBossDefeatedV310(world){
+    const registry=bossRegistryV310();registry[world]=true;
+    state.stats.worldBossesDefeatedByWorld=state.stats.worldBossesDefeatedByWorld||{};
+    state.stats.worldBossesDefeatedByWorld[world]=true;
+  }
+  function forceRequiredBossV310(world,reason=''){ 
+    if(state.completed||world<1||world>selectedWorldCountV34())return false;
+    const s=state.space;if(!s)return false;
+    if(worldBossIsDefeatedV310(world))return false;
+    toast(`Debes derrotar al jefe del mundo ${world} antes de avanzar${reason?`: ${reason}`:''}.`);
+    if(world<selectedWorldCountV34())startLevelBoss(world);else startFinalBoss();
+    return true;
+  }
+
+  const launchGameBaseV310=launchGame;
+  launchGame=async function(){
+    await launchGameBaseV310();
+    if(state.startedAt&&!state.completed){
+      state.worldBossDefeated={};state.worldBossStarted={};
+      state.stats.worldBossesDefeatedByWorld={};state.stats.brownPenalty=0;state.stats.brownDamage=0;
+      updateHUD();saveProgress();
+    }
+  };
+
+  const startEnemyWaveBaseV310=startEnemyWave;
+  startEnemyWave=function(sector){
+    bossRegistryV310();state.worldBossDefeated[sector]=false;
+    state.worldBossStarted[sector]=false;
+    return startEnemyWaveBaseV310(sector);
+  };
+
+  const startLevelBossBaseV310=startLevelBoss;
+  startLevelBoss=function(sector){
+    if(state.completed||worldBossIsDefeatedV310(sector))return;
+    bossRegistryV310();state.worldBossStarted[sector]=true;
+    return startLevelBossBaseV310(sector);
+  };
+
+  const startFinalBossBaseV310=startFinalBoss;
+  startFinalBoss=function(){
+    const last=selectedWorldCountV34();
+    if(state.completed||worldBossIsDefeatedV310(last))return;
+    bossRegistryV310();state.worldBossStarted[last]=true;
+    return startFinalBossBaseV310();
+  };
+
+  const defeatBossFormBaseV310=defeatBossForm;
+  defeatBossForm=function(){
+    const boss=state.space?.boss,world=Number(boss?.sector||state.space?.sector||selectedWorldCountV34());
+    if(boss?.isLevelBoss)markWorldBossDefeatedV310(world);
+    const result=defeatBossFormBaseV310();
+    if(state.stats?.bossDefeated)markWorldBossDefeatedV310(selectedWorldCountV34());
+    saveProgress();return result;
+  };
+
+  const lockClearedLevelBaseV310=lockClearedLevel;
+  lockClearedLevel=function(level){
+    const world=Math.max(1,Math.min(selectedWorldCountV34(),Number(level)||1));
+    if(!worldBossIsDefeatedV310(world)){
+      forceRequiredBossV310(world,'la nota todavía no puede fijarse');
+      return false;
+    }
+    return lockClearedLevelBaseV310(world);
+  };
+
+  const beginSectorTransitionBaseV310=beginSectorTransition;
+  beginSectorTransition=function(nextSector){
+    const destination=Number(nextSector)||1,previous=destination-1;
+    if(previous>=1&&!worldBossIsDefeatedV310(previous)){
+      forceRequiredBossV310(previous,'el siguiente mundo permanece bloqueado');
+      return false;
+    }
+    return beginSectorTransitionBaseV310(destination);
+  };
+
+  const updateAsteroidObjectsBaseV310=updateAsteroidObjects;
+  updateAsteroidObjects=function(w,h,dt,t,safe){
+    const before=Number(state.score)||0,result=updateAsteroidObjectsBaseV310(w,h,dt,t,safe);
+    if(state.space?.stage==='asteroids'&&!state.disqualified&&(Number(state.score)||0)<before){
+      state.score=Math.max(before,worldFloorV34());
+      state.stats.brownPenalty=0;updateHUD();saveProgress();
+    }
+    return result;
+  };
+
+  const showHowBaseV310=showHow;
+  showHow=function(){
+    showModal('Cómo jugar',`<ol><li><b>Elige mínimo 2 y máximo 3 temas principales.</b> Cada tema se convierte en un mundo.</li><li>Los <b>asteroides cafés</b> pueden reducir vida y puntos de combate, pero nunca descuentan la nota académica.</li><li>Los asteroides azules, portales y astros activan preguntas del mundo actual.</li><li>Al completar las preguntas aparece una escuadra armada.</li><li>Después de destruir la escuadra aparece obligatoriamente el <b>jefe de ese mundo</b>. No es posible fijar la nota ni abrir el mundo siguiente sin derrotarlo.</li><li>En el último mundo, los jefes Alfa y Beta cumplen la batalla obligatoria final. Al completar toda la campaña, la nota queda en 5.00.</li><li>Los disparos y embestidas de enemigos o jefes afectan vida y puntos, no la nota.</li></ol>`);
+  };
+
 })();

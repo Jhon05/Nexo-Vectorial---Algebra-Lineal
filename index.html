@@ -4,12 +4,17 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#020817" />
-  <title>Nexo Vectorial v3.0 — Progreso por mundos seleccionados</title>
+  <title>Nexo Vectorial v3.10 — Asteroides cafés y jefes obligatorios</title>
   <link rel="stylesheet" href="styles.css" />
   <script>
     window.MathJax = {
-      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']], processEscapes: true, processEnvironments: true },
-      svg: { fontCache: 'global', scale: 1.16, displayAlign: 'left', displayIndent: '0' },
+      loader: { load: ['[tex]/ams'] },
+      tex: {
+        inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']],
+        processEscapes: true, processEnvironments: true,
+        packages: {'[+]':['ams']}
+      },
+      svg: { fontCache: 'local', scale: 1.22, displayAlign: 'center', displayIndent: '0' },
       options: { enableMenu: false, skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
     };
   </script>
@@ -64,9 +69,11 @@
           <div><strong>NEXO VECTORIAL</strong><small>OPERACIÓN MATRIZ CERO</small></div>
         </div>
         <div class="hud-metric energy"><span class="metric-icon">❤</span><div><small>VIDA <b id="lifeValue">5.0/5</b></small><div id="energyBars" class="energy-bars" aria-label="Vida de la nave"></div></div></div>
-        <div class="hud-metric"><span class="metric-icon">★</span><div><small>PUNTAJE</small><strong id="scoreText">0.00 / 5.00</strong></div></div>
+        <div class="hud-metric"><span class="metric-icon">★</span><div><small>NOTA</small><strong id="scoreText">0.00 / 5.00</strong></div></div>
         <div class="hud-metric integrity-hud"><span class="metric-icon">◈</span><div><small>INTEGRIDAD</small><strong id="integrityText">0 / 5</strong><em class="integrity-rule">5 = QUIZ ANULADO</em></div></div>
         <button id="soundBtn" class="icon-btn" type="button" aria-label="Activar o silenciar sonido">🔊</button>
+        <button id="pauseBtn" type="button" class="pause-btn-top" aria-label="Pausar o reanudar el juego">⏸ PAUSA</button>
+        <button id="finishBtn" type="button" class="finish-btn finish-btn-top" aria-label="Finalizar intento y enviar la nota actual">FINALIZAR</button>
       </header>
 
       <div id="gameLayout" class="game-layout flight-mode">
@@ -149,11 +156,19 @@
 
       <footer class="hud-bottom">
         <div class="level-chip"><small>NIVEL</small><strong id="levelText">1</strong></div>
-        <div class="xp-wrap"><span>EXP</span><div class="xp-track"><div id="xpFill"></div></div><strong id="xpText">0 / 600</strong></div>
+        <div class="xp-wrap"><span>PUNTOS</span><div class="xp-track"><div id="xpFill"></div></div><strong id="xpText">0 PTS</strong></div>
         <div class="sector-dots" id="sectorDots" aria-label="Progreso por sectores"></div>
-        <button id="finishBtn" type="button" class="finish-btn">FINALIZAR Y ENVIAR NOTA</button>
       </footer>
     </section>
+
+    <div id="pauseOverlay" class="pause-overlay" hidden>
+      <div class="pause-card glass-panel" role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+        <div class="pause-symbol" aria-hidden="true">Ⅱ</div>
+        <h2 id="pauseTitle">JUEGO EN PAUSA</h2>
+        <p>La nave, los enemigos, los disparos y el tiempo de las preguntas están detenidos.</p>
+        <button id="resumeBtn" type="button" class="primary-btn">REANUDAR MISIÓN</button>
+      </div>
+    </div>
 
     <div id="fullscreenGate" class="fullscreen-gate" hidden>
       <div class="fullscreen-card glass-panel" role="alertdialog" aria-modal="true" aria-labelledby="fullscreenTitle">

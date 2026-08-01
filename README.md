@@ -1,29 +1,38 @@
-# Nexo Vectorial v2.9
+# Nexo Vectorial v3.10 — SCORM 1.2 para Brightspace
 
-- Menú inicial mínimo y visible en una sola pantalla.
-- Título reducido y botones principales siempre visibles.
-- Selección de dos o tres temas mediante una ventana independiente.
-- La advertencia de integridad se muestra al iniciar y después de cada incidencia, no en la portada.
-- Enunciados, opciones y respuestas sin números decimales; se usan enteros o fracciones exactas con MathJax.
-- Quinta incidencia: quiz anulado, nota cero y descarga automática del informe HTML.
+Juego de Álgebra Lineal con campaña espacial, preguntas dinámicamente parametrizadas y envío de nota sobre 5.00.
 
+## Cambios de esta versión
 
-## v2.9
-- La selección de 2 o 3 temas se realiza por temas principales, no por subtemas.
-- Al elegir un tema principal se incluyen automáticamente sus dos subtemas.
-- Los 4.00 puntos académicos se redistribuyen entre los temas principales elegidos.
+- Banco ampliado a **50 plantillas principales**, 10 por mundo.
+- Todas las preguntas numéricas de vectores, matrices, determinantes, sistemas y retos mixtos cambian sus datos y el procedimiento mostrado.
+- Las preguntas repetidas por reintento regeneran valores, respuesta correcta, distractores, pista, gráfica y explicación.
+- Los portales usan entre 4 y 5 plantillas avanzadas por mundo.
+- Astros, salvavidas, escudos de jefes y reintentos de jefes reciben variantes nuevas en cada aparición.
+- Se validaron automáticamente decenas de miles de instancias sin opciones duplicadas ni respuestas inválidas.
+- Se conserva la cámara de tres astros al superar un agujero negro; al fallar, solo desaparece el portal.
+- Se mantienen pausa, rendimiento adaptativo, nota fija por mundo y nota 5.00 al completar toda la campaña.
+- `imsmanifest.xml` permanece directamente en la raíz del ZIP.
 
+## Uso
 
-## v3.0
-- Selección obligatoria de mínimo 2 y máximo 3 temas principales.
-- Cada tema principal elegido se convierte en un mundo de la campaña.
-- La barra y el panel de progreso muestran únicamente los 2 o 3 mundos seleccionados.
-- El botón Iniciar queda desactivado cuando hay menos de dos mundos válidos.
+Subir el ZIP directamente a Brightspace como paquete SCORM 1.2, sin descomprimirlo.
 
 
-## v3.1
-- Se agregan astros brillantes opcionales con nombres de matemáticos importantes.
-- Una brújula dinámica indica la dirección del astro y la banda superior muestra nombre, distancia y recompensa.
-- Los astros activan preguntas avanzadas diferentes a las preguntas normales.
-- Un acierto equivale a 2 o 3 preguntas de asteroide azul; un error reinicia el vuelo desde el último punto seguro.
-- Máximo de tres oportunidades de astro por mundo para conservar el equilibrio de la calificación.
+## Corrección v3.7
+Los portales y los tres astros validan el mundo original, el sector secuencial y los subtemas seleccionados. Nunca usan preguntas de otro mundo como respaldo.
+
+
+## v3.9 · Auditoría de puntaje
+- Las respuestas correctas de asteroides, astros y cálculos de escuadras/jefes tienen recompensa positiva protegida.
+- Ninguna respuesta correcta puede reducir la nota.
+- Los astros siempre conceden una recompensa positiva, incluso si se agota la lista de preguntas cubiertas.
+- Las recompensas por destruir naves y formas del jefe también se validan como positivas.
+
+
+## Versión 3.10 — asteroides cafés y jefes obligatorios
+
+- Los impactos con asteroides cafés reducen vida y puntos de combate, pero nunca modifican la nota académica.
+- Cada mundo exige completar sus preguntas, derrotar la escuadra y vencer a su jefe.
+- La nota del mundo no se fija y el mundo siguiente no se desbloquea hasta registrar la derrota del jefe correspondiente.
+- El último mundo conserva la batalla final Alfa/Beta y completar toda la campaña fija automáticamente 5.00.

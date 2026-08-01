@@ -3,6 +3,7 @@
 
   const LETTERS=['A','B','C','D','E','F'];
   const clone=x=>JSON.parse(JSON.stringify(x));
+  const key=x=>JSON.stringify(x);
 
   function rng(seed){
     return function(){
@@ -12,13 +13,14 @@
       return((t^t>>>14)>>>0)/4294967296;
     };
   }
-
   function makeContext(seed){
-    const R=rng(seed||20260721);
+    const R=rng(seed||20260731);
     const ri=(a,b)=>Math.floor(R()*(b-a+1))+a;
+    const nz=(a=-7,b=7)=>{let x=0;while(!x)x=ri(a,b);return x;};
     const pick=a=>a[Math.floor(R()*a.length)];
     const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
-    return{R,ri,pick,shuffle};
+    const sign=n=>n>=0?`+${n}`:`${n}`;
+    return{R,ri,nz,pick,shuffle,sign};
   }
 
   const gcd=(a,b)=>{a=Math.abs(a);b=Math.abs(b);while(b){const t=a%b;a=b;b=t;}return a||1;};
@@ -27,281 +29,175 @@
     let den=1,num=Math.round(x),found=false;
     for(let d=2;d<=240;d++){const n=Math.round(x*d);if(Math.abs(x-n/d)<1e-10){num=n;den=d;found=true;break;}}
     if(!found){den=10000;num=Math.round(x*den);}
-    const g=gcd(num,den);num/=g;den/=g;
-    const sign=num<0?'-':'';num=Math.abs(num);
-    return den===1?`${sign}${num}`:`${sign}\\frac{${num}}{${den}}`;
+    const g=gcd(num,den);num/=g;den/=g;const s=num<0?'-':'';num=Math.abs(num);
+    return den===1?`${s}${num}`:`${s}\\frac{${num}}{${den}}`;
   }
-  const mtex=m=>String.raw`\begin{bmatrix}${m.map(r=>r.map(texNum).join('&')).join('\\\\')}\end{bmatrix}`;
-  const atex=m=>String.raw`\left[\begin{array}{${'c'.repeat(m[0].length-1)}|c}${m.map(r=>r.map(texNum).join('&')).join('\\\\')}\end{array}\right]`;
-  const v2=v=>String.raw`\left(${texNum(v[0])},${texNum(v[1])}\right)`;
-  const v3=v=>String.raw`\left(${texNum(v[0])},${texNum(v[1])},${texNum(v[2])}\right)`;
   const math=s=>String.raw`\(${s}\)`;
   const display=s=>String.raw`\[${s}\]`;
-  const key=x=>JSON.stringify(x);
+  const v2=v=>String.raw`\left(${texNum(v[0])},${texNum(v[1])}\right)`;
+  const v3=v=>String.raw`\left(${texNum(v[0])},${texNum(v[1])},${texNum(v[2])}\right)`;
+  const mtex=m=>String.raw`\begin{bmatrix}${m.map(r=>r.map(texNum).join('&')).join('\\\\')}\end{bmatrix}`;
+  const atex=m=>String.raw`\left[\begin{array}{${'c'.repeat(m[0].length-1)}|c}${m.map(r=>r.map(texNum).join('&')).join('\\\\')}\end{array}\right]`;
+  const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);
+  const norm2=a=>dot(a,a);
+  const addV=(a,b)=>a.map((x,i)=>x+b[i]);
+  const subV=(a,b)=>a.map((x,i)=>x-b[i]);
+  const scaleV=(c,a)=>a.map(x=>c*x);
+  const transpose=A=>A[0].map((_,j)=>A.map(r=>r[j]));
+  const matAdd=(A,B)=>A.map((r,i)=>r.map((x,j)=>x+B[i][j]));
+  const matScale=(c,A)=>A.map(r=>r.map(x=>c*x));
+  const matMul=(A,B)=>A.map(r=>B[0].map((_,j)=>r.reduce((s,x,k)=>s+x*B[k][j],0)));
+  const matVec=(A,x)=>A.map(r=>dot(r,x));
+  const det2=A=>A[0][0]*A[1][1]-A[0][1]*A[1][0];
+  const det3=A=>A[0][0]*(A[1][1]*A[2][2]-A[1][2]*A[2][1])-A[0][1]*(A[1][0]*A[2][2]-A[1][2]*A[2][0])+A[0][2]*(A[1][0]*A[2][1]-A[1][1]*A[2][0]);
+  const sameMatrix=(A,B)=>key(A)===key(B);
 
   function optionSet(correct,distractors,formatter=x=>String(x),shuffle=x=>x){
-    const vals=[];
-    for(const v of [correct,...distractors]){
-      if(!vals.some(z=>key(z)===key(v)))vals.push(clone(v));
-      if(vals.length===6)break;
+    const vals=[];const push=v=>{if(!vals.some(z=>key(z)===key(v)))vals.push(clone(v));};
+    [correct,...distractors].forEach(push);
+    let n=1,guard=0;
+    while(vals.length<6&&guard++<150){
+      let c;
+      if(typeof correct==='number')c=correct+(n%2?n:-n);
+      else if(Array.isArray(correct)){c=clone(correct);if(Array.isArray(c[0]))c[0][0]+=n;else c[0]+=n;}
+      else c=`${correct} ${n}`;
+      push(c);n++;
     }
-    while(vals.length<6){
-      if(typeof correct==='number')vals.push(correct+(vals.length+1)*(vals.length%2?1:-1));
-      else if(Array.isArray(correct)){
-        const z=clone(correct);
-        if(Array.isArray(z[0]))z[0][0]=Number(z[0][0])+(vals.length+1);
-        else z[0]=Number(z[0])+(vals.length+1);
-        vals.push(z);
-      }else vals.push(`${correct} ${vals.length+1}`);
-    }
-    const mixed=shuffle(vals);
-    return{
-      options:mixed.map((v,i)=>({letter:LETTERS[i],html:formatter(v),value:i})),
-      answer:mixed.findIndex(v=>key(v)===key(correct))
-    };
+    const mixed=shuffle(vals.slice(0,6));
+    return{options:mixed.map((v,i)=>({letter:LETTERS[i],html:formatter(v),value:i})),answer:mixed.findIndex(v=>key(v)===key(correct))};
   }
-
   function comboOptions(correct,choices,shuffle){
-    const mixed=shuffle([correct,...choices.filter(x=>x!==correct)].slice(0,6));
+    const vals=[];[correct,...choices].forEach(x=>{if(!vals.includes(x))vals.push(x);});
+    const mixed=shuffle(vals.slice(0,6));
     return{options:mixed.map((x,i)=>({letter:LETTERS[i],html:x,value:i})),answer:mixed.indexOf(correct)};
   }
+  function base(level,topic,difficulty,type,badge,template,rest){return{level,topic,difficulty,type,badge,template,...rest};}
+  function inv2(A){const d=det2(A);return[[A[1][1]/d,-A[0][1]/d],[-A[1][0]/d,A[0][0]/d]];}
+  function invertible2(c){let A;do{A=[[c.nz(-5,5),c.nz(-5,5)],[c.nz(-5,5),c.nz(-5,5)]];}while(Math.abs(det2(A))<1);return A;}
+  function invertible3(c){let A;do{A=Array.from({length:3},()=>Array.from({length:3},()=>c.ri(-4,4)));}while(!det3(A)||Math.abs(det3(A))>80);return A;}
+  function pythagorean2(c){const triples=[[3,4,5],[5,12,13],[8,15,17],[7,24,25]];const [a,b,n]=c.pick(triples),scale=c.ri(1,4);const signs=[c.pick([-1,1]),c.pick([-1,1])];return{v:[scale*a*signs[0],scale*b*signs[1]],n:scale*n};}
+  function pythagorean3(c){const choices=[[1,2,2,3],[2,3,6,7],[2,6,9,11],[4,4,7,9]];const [a,b,d,n]=c.pick(choices),scale=c.ri(1,3);return{v:[scale*a*c.pick([-1,1]),scale*b*c.pick([-1,1]),scale*d*c.pick([-1,1])],n:scale*n};}
+  function system3FromSolution(c){const A=invertible3(c),x=[c.ri(-4,6),c.ri(-4,6),c.ri(-4,6)],b=matVec(A,x);return{A,x,b,M:A.map((r,i)=>[...r,b[i]])};}
 
+  const T={};
+
+  // MUNDO 1 · VECTORES EN R2
+  T.v2_combo=c=>{const u=[c.nz(),c.nz()],v=[c.nz(),c.nz()],a=c.pick([-3,-2,2,3,4]),b=c.pick([-3,-2,2,3]),ans=addV(scaleV(a,u),scaleV(b,v));return base(1,'v2d-ops',1,'mcq','NIVEL 1 · COMBINACIÓN VECTORIAL','v2_combo',{prompt:`Sean ${math(`\\mathbf u=${v2(u)}`)} y ${math(`\\mathbf v=${v2(v)}`)}. Calcule ${math(`${a}\\mathbf u${b>=0?'+':''}${b}\\mathbf v`)}.`,...optionSet(ans,[addV(scaleV(a,u),scaleV(-b,v)),addV(scaleV(b,u),scaleV(a,v)),[ans[1],ans[0]],[-ans[0],ans[1]],[ans[0],-ans[1]]],x=>math(v2(x)),c.shuffle),hint:`Calcula ${math(`${a}\\mathbf u`)} y ${math(`${b}\\mathbf v`)} por separado y combina componentes homólogas.`,explanation:display(`${a}\\mathbf u${b>=0?'+':''}${b}\\mathbf v=${v2(ans)}.`),visual:{kind:'vectors',u,v,result:ans},instruction:'Programa el impulso resultante componente a componente.'});};
+  T.v2_norm_unit=c=>{const {v,n}=pythagorean2(c),unit=v.map(x=>x/n),twice=scaleV(2,v);const statements=[`${math(`\\|\\mathbf u\\|=${n}`)}`,`${math(`\\widehat{\\mathbf u}=${v2(unit)}`)}`,`${math(`2\\mathbf u=${v2(twice)}`)}`,'El vector opuesto tiene el mismo sentido.'];return base(1,'v2d-geometry',1,'roman','NIVEL 1 · NORMA Y DIRECCIÓN','v2_norm_unit',{prompt:`Para ${math(`\\mathbf u=${v2(v)}`)}, determine cuáles afirmaciones son correctas:<ol class="roman-list" type="I">${statements.map(x=>`<li>${x}</li>`).join('')}</ol>`,...comboOptions('I, II y III',['I y II','II y IV','I, III y IV','II y III','Todas'],c.shuffle),hint:'Calcula la norma, divide por ella y distingue dirección de sentido.',explanation:`I, II y III son correctas. El vector opuesto conserva la dirección, pero invierte el sentido.`,visual:{kind:'vectors',u:v,v:scaleV(-1,v)},instruction:'Verifica la geometría del vector antes de avanzar.'});};
+  T.v2_norm_param=c=>{const {v,n}=pythagorean2(c),idx=c.ri(0,1),known=v[1-idx],ans=Math.abs(v[idx]);const vector=idx===0?['k',known]:[known,'k'];return base(1,'v2d-geometry',2,'numeric','NIVEL 1 · PARÁMETRO DE NORMA','v2_norm_param',{prompt:`El vector ${math(`\\mathbf v=(${vector[0]},${vector[1]})`)} tiene norma ${math(String(n))} y ${math('k>0')}. Determine ${math('k')}.`,answerValue:ans,hint:`Usa ${math(`k^2+${known}^2=${n}^2`)} y toma la raíz positiva.`,explanation:display(`k=\\sqrt{${n*n}-${known*known}}=${ans}.`),visual:{kind:'vectors',u:idx===0?[ans,known]:[known,ans],v:[0,0]},instruction:'Ajusta el parámetro que fija la longitud.'});};
+  T.v2_orth_param=c=>{const b=c.nz(-6,6),d=c.nz(-6,6),a=c.pick([-4,-3,-2,2,3,4]),k=-(a*d)/b;if(!Number.isInteger(k))return T.v2_orth_param(makeContext((c.ri(1,1e9))));const u=[k,a],v=[b,d];return base(1,'v2d-geometry',2,'numeric','NIVEL 1 · ORTOGONALIDAD PARAMÉTRICA','v2_orth_param',{prompt:`Determine ${math('k')} para que ${math(v2(['k',a]))} y ${math(v2(v))} sean perpendiculares.`,answerValue:k,hint:'La perpendicularidad exige producto punto igual a cero.',explanation:display(`${b}k+(${a})(${d})=0\\Longrightarrow k=${k}.`),visual:{kind:'vectors',u,v},instruction:'Fija un ángulo de noventa grados.'});};
+  T.v2_direction=c=>{const u=[c.nz(),c.nz()],lambda=c.pick([-4,-3,-2,2,3,4]),v=scaleV(lambda,u),same=lambda>0;return base(1,'v2d-ops',2,'tf','NIVEL 1 · DIRECCIÓN Y SENTIDO','v2_direction',{prompt:`Los vectores ${math(`\\mathbf u=${v2(u)}`)} y ${math(`\\mathbf v=${v2(v)}`)} tienen la misma dirección y el mismo sentido.`,answer:same,hint:'Expresa un vector como múltiplo escalar del otro y revisa el signo.',explanation:`${math(`\\mathbf v=${lambda}\\mathbf u`)}. ${same?'El escalar positivo conserva el sentido.':'El escalar negativo invierte el sentido.'}`,visual:{kind:'vectors',u,v},instruction:'Clasifica la relación direccional.'});};
+  T.v2_projection=c=>{const b=c.pick([[1,0],[0,1],[1,1],[1,-1],[2,1],[1,2]]),t=c.nz(-5,5),w=c.pick([[1,-1],[2,-2],[-1,1],[2,-1],[-2,1]]),perp=[-b[1]*w[0],b[0]*w[0]],a=addV(scaleV(t,b),perp),coef=dot(a,b)/norm2(b),proj=scaleV(coef,b);return base(1,'v2d-geometry',3,'mcq','NIVEL 1 · PROYECCIÓN','v2_projection',{prompt:`Calcule ${math(`\\operatorname{proj}_{\\mathbf b}(\\mathbf a)`)} para ${math(`\\mathbf a=${v2(a)}`)} y ${math(`\\mathbf b=${v2(b)}`)}.`,...optionSet(proj,[a,b,subV(a,proj),scaleV(-1,proj),[proj[1],proj[0]]],x=>math(v2(x)),c.shuffle),hint:`Aplica ${math('\\operatorname{proj}_{\\mathbf b}(\\mathbf a)=\\frac{\\mathbf a\\cdot\\mathbf b}{\\|\\mathbf b\\|^2}\\mathbf b')}.`,explanation:display(`\\frac{\\mathbf a\\cdot\\mathbf b}{\\|\\mathbf b\\|^2}=${texNum(coef)},\\qquad \\operatorname{proj}_{\\mathbf b}(\\mathbf a)=${v2(proj)}.`),visual:{kind:'projection',a,b,proj},instruction:'Alinea la trayectoria mediante una proyección.'});};
+  T.v2_work=c=>{const F=[c.ri(-40,60),c.ri(-40,60)],d=[c.nz(-8,8),c.nz(-8,8)],W=dot(F,d);return base(1,'v2d-ops',3,'numeric','NIVEL 1 · TRABAJO VECTORIAL','v2_work',{prompt:`Una fuerza ${math(`\\mathbf F=${v2(F)}\\,\\mathrm N`)} produce el desplazamiento ${math(`\\mathbf d=${v2(d)}\\,\\mathrm m`)}. Calcule ${math('W=\\mathbf F\\cdot\\mathbf d')}.`,answerValue:W,hint:'Multiplica componentes correspondientes y suma.',explanation:display(`W=${F[0]}(${d[0]})+${F[1]}(${d[1]})=${W}\\,\\mathrm J.`),visual:{kind:'vectors',u:F,v:d},instruction:'Calcula la energía transferida.'});};
+  T.v2_difference_norm=c=>{const {v:u,n:nu}=pythagorean2(c),v=[c.nz(),c.nz()],d=dot(u,v),ans=nu*nu+norm2(v)-2*d;return base(1,'v2d-geometry',4,'numeric','NIVEL 1 · IDENTIDAD DE NORMA','v2_difference_norm',{prompt:`Sean ${math(`\\|\\mathbf u\\|=${nu}`)}, ${math(`\\mathbf v=${v2(v)}`)} y ${math(`\\mathbf u\\cdot\\mathbf v=${d}`)}. Calcule ${math('\\|\\mathbf u-\\mathbf v\\|^2')}.`,answerValue:ans,hint:'Expande la norma al cuadrado de la diferencia.',explanation:display(`\\|\\mathbf u-\\mathbf v\\|^2=${nu}^2+${norm2(v)}-2(${d})=${ans}.`),instruction:'Determina la separación cuadrática.'});};
+  T.v2_displacement=c=>{const P=[c.ri(-8,8),c.ri(-8,8)],D=[c.nz(-8,8),c.nz(-8,8)],Q=addV(P,D),ans=norm2(D);return base(1,'v2d-ops',2,'numeric','NIVEL 1 · DESPLAZAMIENTO','v2_displacement',{prompt:`Una nave se mueve de ${math(`P=${v2(P)}`)} a ${math(`Q=${v2(Q)}`)}. Calcule ${math('\\|\\overrightarrow{PQ}\\|^2')}.`,answerValue:ans,hint:'Primero forma \\(Q-P\\), después calcula la norma al cuadrado.',explanation:display(`\\overrightarrow{PQ}=${v2(D)},\\qquad \\|\\overrightarrow{PQ}\\|^2=${ans}.`),visual:{kind:'vectors',u:P,v:Q,result:D},instruction:'Mide el desplazamiento exacto.'});};
+  T.v2_dot_angle=c=>{const u=c.pick([[1,0],[0,1],[1,1],[1,-1],[2,1]]),lambda=c.pick([2,3,4]),perp=[-u[1],u[0]],v=addV(scaleV(lambda,u),scaleV(c.pick([-2,-1,1,2]),perp)),ans=dot(u,v);return base(1,'v2d-geometry',3,'numeric','NIVEL 1 · PRODUCTO PUNTO','v2_dot_angle',{prompt:`Para ${math(`\\mathbf u=${v2(u)}`)} y ${math(`\\mathbf v=${v2(v)}`)}, calcule ${math('\\mathbf u\\cdot\\mathbf v')}.`,answerValue:ans,hint:'Multiplica las componentes correspondientes.',explanation:display(`\\mathbf u\\cdot\\mathbf v=${u[0]}(${v[0]})+${u[1]}(${v[1]})=${ans}.`),visual:{kind:'vectors',u,v},instruction:'Calcula la afinidad angular de las rutas.'});};
+
+  // MUNDO 2 · VECTORES EN R3
+  T.v3_combo=c=>{const u=[c.nz(),c.nz(),c.nz()],v=[c.nz(),c.nz(),c.nz()],a=c.pick([-3,-2,2,3]),b=c.pick([-2,-1,1,2]),ans=addV(scaleV(a,u),scaleV(b,v));return base(2,'v3d-ops',1,'mcq','NIVEL 2 · COMBINACIÓN EN R³','v3_combo',{prompt:`Sean ${math(`\\mathbf u=${v3(u)}`)} y ${math(`\\mathbf v=${v3(v)}`)}. Calcule ${math(`${a}\\mathbf u${b>=0?'+':''}${b}\\mathbf v`)}.`,...optionSet(ans,[addV(scaleV(a,u),scaleV(-b,v)),addV(scaleV(b,u),scaleV(a,v)),[ans[1],ans[0],ans[2]],[-ans[0],ans[1],ans[2]],[ans[0],ans[1],-ans[2]]],x=>math(v3(x)),c.shuffle),hint:'Opera cada una de las tres componentes.',explanation:display(`${a}\\mathbf u${b>=0?'+':''}${b}\\mathbf v=${v3(ans)}.`),visual:{kind:'vectors',u:u.slice(0,2),v:v.slice(0,2),result:ans.slice(0,2)},instruction:'Combina tres componentes de navegación.'});};
+  T.v3_norm_param=c=>{const {v,n}=pythagorean3(c),idx=c.ri(0,2),known=v.map((x,i)=>i===idx?'k':x),ans=Math.abs(v[idx]),sum=v.reduce((s,x,i)=>i===idx?s:s+x*x,0);return base(2,'v3d-dot',2,'numeric','NIVEL 2 · NORMA PARAMÉTRICA','v3_norm_param',{prompt:`El vector ${math(`\\mathbf u=${v3(known)}`)} tiene norma ${math(String(n))} y ${math('k>0')}. Determine ${math('k')}.`,answerValue:ans,hint:`Plantea ${math(`k^2+${sum}=${n*n}`)}.`,explanation:display(`k=\\sqrt{${n*n}-${sum}}=${ans}.`),instruction:'Completa la coordenada faltante.'});};
+  T.v3_dot=c=>{const u=[c.nz(),c.nz(),c.nz()],v=[c.nz(),c.nz(),c.nz()],ans=dot(u,v);return base(2,'v3d-dot',1,'numeric','NIVEL 2 · PRODUCTO PUNTO 3D','v3_dot',{prompt:`Calcule ${math('\\mathbf u\\cdot\\mathbf v')} para ${math(`\\mathbf u=${v3(u)}`)} y ${math(`\\mathbf v=${v3(v)}`)}.`,answerValue:ans,hint:'Suma los tres productos componente a componente.',explanation:display(`\\mathbf u\\cdot\\mathbf v=${u[0]}(${v[0]})+${u[1]}(${v[1]})+${u[2]}(${v[2]})=${ans}.`),instruction:'Sincroniza las trayectorias tridimensionales.'});};
+  T.v3_orth_param=c=>{const a=c.nz(-4,4),b=c.nz(-4,4),p=c.nz(-5,5),q=c.nz(-5,5),r=c.nz(-5,5);let k=-(a*p+b*q)/r;if(!Number.isInteger(k))return T.v3_orth_param(makeContext(c.ri(1,1e9)));const u=[a,b,k],v=[p,q,r];return base(2,'v3d-dot',2,'numeric','NIVEL 2 · ORTOGONALIDAD 3D','v3_orth_param',{prompt:`Determine ${math('k')} para que ${math(`(${a},${b},k)`)} sea perpendicular a ${math(v3(v))}.`,answerValue:k,hint:'Iguala el producto punto a cero.',explanation:display(`${a}(${p})+${b}(${q})+k(${r})=0\\Longrightarrow k=${k}.`),instruction:'Ajusta el vector hasta hacerlo ortogonal.'});};
+  T.v3_pythagoras_tf=c=>{const u=[c.nz(-4,4),c.nz(-4,4),c.nz(-4,4)],w=[c.nz(-3,3),c.nz(-3,3),c.nz(-3,3)],v=[u[1]*w[2]-u[2]*w[1],u[2]*w[0]-u[0]*w[2],u[0]*w[1]-u[1]*w[0]],truth=c.pick([true,false]);const vv=truth?v:addV(v,[1,0,0]);return base(2,'v3d-dot',2,'tf','NIVEL 2 · IDENTIDAD DE PITÁGORAS','v3_pythagoras_tf',{prompt:`Para ${math(`\\mathbf u=${v3(u)}`)} y ${math(`\\mathbf v=${v3(vv)}`)}, se cumple ${math('\\|\\mathbf u+\\mathbf v\\|^2=\\|\\mathbf u\\|^2+\\|\\mathbf v\\|^2')}.`,answer:dot(u,vv)===0,hint:'La igualdad se cumple exactamente cuando el producto punto es cero.',explanation:`${math(`\\mathbf u\\cdot\\mathbf v=${dot(u,vv)}`)}; por tanto, la afirmación es ${dot(u,vv)===0?'verdadera':'falsa'}.`,instruction:'Comprueba la ortogonalidad oculta.'});};
+  T.v3_distance=c=>{const P=[c.ri(-6,6),c.ri(-6,6),c.ri(-6,6)],D=c.pick([[1,2,2],[2,3,6],[2,6,9],[4,4,7]]).map(x=>x*c.pick([-1,1])),Q=addV(P,D),ans=Math.sqrt(norm2(D));return base(2,'v3d-ops',2,'numeric','NIVEL 2 · DISTANCIA ESPACIAL','v3_distance',{prompt:`Determine la distancia entre ${math(`P=${v3(P)}`)} y ${math(`Q=${v3(Q)}`)}.`,answerValue:ans,hint:'Forma \\(Q-P\\) y calcula su norma.',explanation:display(`Q-P=${v3(D)},\\qquad d(P,Q)=\\sqrt{${norm2(D)}}=${ans}.`),instruction:'Calcula la distancia en el espacio.'});};
+  T.v3_work=c=>{const F=[c.nz(-8,8),c.nz(-8,8),c.nz(-8,8)],d=[c.nz(-6,6),c.nz(-6,6),c.nz(-6,6)],ans=dot(F,d);return base(2,'v3d-dot',3,'numeric','NIVEL 2 · TRABAJO EN R³','v3_work',{prompt:`Una fuerza ${math(`\\mathbf F=${v3(F)}`)} actúa durante el desplazamiento ${math(`\\mathbf d=${v3(d)}`)}. Calcule el trabajo.`,answerValue:ans,hint:'Evalúa el producto punto en tres dimensiones.',explanation:display(`W=\\mathbf F\\cdot\\mathbf d=${ans}.`),instruction:'Determina el trabajo tridimensional.'});};
+  T.v3_projection_component=c=>{const v=c.pick([[1,1,1],[1,1,-1],[2,1,1],[1,2,1]]),t=c.nz(-4,4),p=[v[1],-v[0],0],u=addV(scaleV(t,v),scaleV(c.nz(-3,3),p)),coef=dot(u,v)/norm2(v),proj=scaleV(coef,v),idx=c.ri(0,2);return base(2,'v3d-dot',4,'numeric','NIVEL 2 · PROYECCIÓN 3D','v3_projection_component',{prompt:`Sean ${math(`\\mathbf u=${v3(u)}`)} y ${math(`\\mathbf v=${v3(v)}`)}. Calcule la componente ${idx+1} de ${math('\\operatorname{proj}_{\\mathbf v}(\\mathbf u)')}.`,answerValue:proj[idx],hint:'Calcula el coeficiente de proyección y luego multiplica por \\(\\mathbf v\\).',explanation:display(`\\operatorname{proj}_{\\mathbf v}(\\mathbf u)=${v3(proj)},\\qquad \\text{componente ${idx+1}}=${texNum(proj[idx])}.`),instruction:'Extrae una coordenada de la proyección.'});};
+  T.v3_linear_param=c=>{const u=[c.nz(-4,4),c.nz(-4,4),c.nz(-4,4)];let v;do{v=[c.nz(-4,4),c.nz(-4,4),c.nz(-4,4)];}while((u[0]*v[1]-u[1]*v[0])===0&&(u[0]*v[2]-u[2]*v[0])===0&&(u[1]*v[2]-u[2]*v[1])===0);const a=c.nz(-4,4),b=c.nz(-4,4),w=addV(scaleV(a,u),scaleV(b,v)),ask=c.pick(['a','b']);return base(2,'v3d-ops',3,'numeric','NIVEL 2 · COEFICIENTE DE COMBINACIÓN','v3_linear_param',{prompt:`Se sabe que ${math(`a\\mathbf u+b\\mathbf v=${v3(w)}`)}, donde ${math(`\\mathbf u=${v3(u)}`)} y ${math(`\\mathbf v=${v3(v)}`)}. Determine ${math(ask)}.`,answerValue:ask==='a'?a:b,hint:'Usa dos componentes para resolver el sistema de coeficientes y verifica con la tercera.',explanation:display(`a=${a},\\qquad b=${b}.`),instruction:'Recupera el coeficiente de la combinación.'});};
+  T.v3_sum_norm=c=>{const u=[c.nz(),c.nz(),c.nz()],v=[c.nz(),c.nz(),c.nz()],ans=norm2(addV(u,v));return base(2,'v3d-dot',3,'numeric','NIVEL 2 · NORMA DE LA RESULTANTE','v3_sum_norm',{prompt:`Calcule ${math('\\|\\mathbf u+\\mathbf v\\|^2')} para ${math(`\\mathbf u=${v3(u)}`)} y ${math(`\\mathbf v=${v3(v)}`)}.`,answerValue:ans,hint:'Suma primero los vectores y luego calcula la norma al cuadrado.',explanation:display(`\\mathbf u+\\mathbf v=${v3(addV(u,v))},\\qquad \\|\\mathbf u+\\mathbf v\\|^2=${ans}.`),instruction:'Mide la intensidad de la resultante.'});};
+
+  // MUNDO 3 · MATRICES
+  T.m_combo=c=>{const A=Array.from({length:2},()=>[c.ri(-5,5),c.ri(-5,5)]),B=Array.from({length:2},()=>[c.ri(-5,5),c.ri(-5,5)]),a=c.pick([-3,-2,2,3]),b=c.pick([-2,-1,1,2]),C=matAdd(matScale(a,A),matScale(b,B));return base(3,'m22-ops',1,'mcq','NIVEL 3 · COMBINACIÓN DE MATRICES','m_combo',{prompt:`Sean ${math(`A=${mtex(A)}`)} y ${math(`B=${mtex(B)}`)}. Calcule ${math(`${a}A${b>=0?'+':''}${b}B`)}.`,...optionSet(C,[matAdd(matScale(a,A),matScale(-b,B)),matAdd(matScale(b,A),matScale(a,B)),transpose(C),matScale(-1,C),A],x=>math(mtex(x)),c.shuffle),hint:'Opera entrada por entrada y controla los signos.',explanation:display(`${a}A${b>=0?'+':''}${b}B=${mtex(C)}.`),visual:{kind:'matrixMultiply',A,B,C},instruction:'Combina los módulos matriciales.'});};
+  T.m_product_entry=c=>{const A=Array.from({length:2},()=>[c.ri(-5,5),c.ri(-5,5)]),B=Array.from({length:2},()=>[c.ri(-5,5),c.ri(-5,5)]),C=matMul(A,B),i=c.ri(0,1),j=c.ri(0,1);return base(3,'m22-ops',2,'numeric','NIVEL 3 · ENTRADA DE UN PRODUCTO','m_product_entry',{prompt:`Sean ${math(`A=${mtex(A)}`)} y ${math(`B=${mtex(B)}`)}. Determine ${math(`(AB)_{${i+1}${j+1}}`)}.`,answerValue:C[i][j],hint:`Multiplica la fila ${i+1} de \\(A\\) por la columna ${j+1} de \\(B\\).`,explanation:display(`(AB)_{${i+1}${j+1}}=${A[i].map((x,k)=>`${x}(${B[k][j]})`).join('+')}=${C[i][j]}.`),visual:{kind:'matrixMultiply',A,B,C},instruction:'Calcula una entrada por fila y columna.'});};
+  T.m_commute_tf=c=>{const diagonal=c.pick([true,false]);let A,B;if(diagonal){A=[[c.nz(),0],[0,c.nz()]];B=[[c.nz(),0],[0,c.nz()]];}else{A=[[1,c.nz()],[0,1]];B=[[1,0],[c.nz(),1]];}const truth=sameMatrix(matMul(A,B),matMul(B,A));return base(3,'m22-ops',2,'tf','NIVEL 3 · CONMUTATIVIDAD','m_commute_tf',{prompt:`Para ${math(`A=${mtex(A)}`)} y ${math(`B=${mtex(B)}`)}, se cumple ${math('AB=BA')}.`,answer:truth,hint:'Calcula ambos productos en el orden indicado.',explanation:`${math(`AB=${mtex(matMul(A,B))}`)} y ${math(`BA=${mtex(matMul(B,A))}`)}; la afirmación es ${truth?'verdadera':'falsa'}.`,visual:{kind:'matrixMultiply',A,B,C:matMul(A,B)},instruction:'Comprueba si el orden altera el producto.'});};
+  T.m_dimensions=c=>{const m=c.ri(2,6),n=c.ri(2,6);let p=c.ri(2,6);while(p===m)p=c.ri(2,6);const statements=[`${math(`\\displaystyle A\\in M_{${m}\\times${n}}`)} y ${math(`\\displaystyle B\\in M_{${n}\\times${p}}`)} permiten calcular ${math('AB')}.`,`${math(`AB\\in M_{${m}\\times${p}}`)}.`,`${math(`B^T\\in M_{${p}\\times${n}}`)}.`,`${math('BA')} siempre está definido.`];return base(3,'m33-ops',1,'roman','NIVEL 3 · DIMENSIONES MATRICIALES','m_dimensions',{prompt:`Determine cuáles afirmaciones son correctas:<ol class="roman-list" type="I">${statements.map(x=>`<li>${x}</li>`).join('')}</ol>`,...comboOptions('I, II y III',['I y II','II y IV','I, III y IV','II y III','Todas'],c.shuffle),hint:'Las dimensiones internas deben coincidir.',explanation:'I, II y III son correctas; \\(BA\\) solo existe si además \\(p=m\\).',instruction:'Valida las dimensiones antes de multiplicar.'});};
+  T.m_equation=c=>{const A=Array.from({length:2},()=>[c.ri(-5,5),c.ri(-5,5)]),X=Array.from({length:2},()=>[c.ri(-4,5),c.ri(-4,5)]),alpha=c.pick([2,3,4]),beta=c.pick([-3,-2,2,3]),B=matAdd(matScale(alpha,X),matScale(beta,A)),i=c.ri(0,1),j=c.ri(0,1);return base(3,'m22-ops',3,'numeric','NIVEL 3 · ECUACIÓN MATRICIAL','m_equation',{prompt:`La ecuación ${math(`${alpha}X${beta>=0?'+':''}${beta}A=B`)} tiene ${math(`A=${mtex(A)}`)} y ${math(`B=${mtex(B)}`)}. Determine ${math(`x_{${i+1}${j+1}}`)}.`,answerValue:X[i][j],hint:`Despeja ${math(`X=\\frac1{${alpha}}(B${beta>=0?'-':'+'}${Math.abs(beta)}A)`)}.`,explanation:display(`X=${mtex(X)},\\qquad x_{${i+1}${j+1}}=${X[i][j]}.`),visual:{kind:'matrixMultiply',A,B,C:X},instruction:'Despeja la matriz desconocida.'});};
+  T.m_jordan_power=c=>{const a=c.nz(-4,4),n=c.ri(4,15),A=[[1,a],[0,1]],ans=n*a;return base(3,'m22-ops',3,'numeric','NIVEL 3 · POTENCIA DE JORDAN','m_jordan_power',{prompt:`Sea ${math(`A=${mtex(A)}`)}. Determine la entrada ${math(`(A^{${n}})_{12}`)}.`,answerValue:ans,hint:'Busca el patrón de las potencias de una matriz triangular unipotente.',explanation:display(`A^n=\\begin{bmatrix}1&na\\\\0&1\\end{bmatrix},\\qquad (A^{${n}})_{12}=${n}(${a})=${ans}.`),visual:{kind:'matrixMultiply',A,B:A,C:[[1,ans],[0,1]]},instruction:'Predice una iteración matricial lejana.'});};
+  T.m_process=c=>{const P=invertible2(c),x0=[c.ri(1,8),c.ri(1,8)],x1=matVec(P,x0),x2=matVec(P,x1),idx=c.ri(0,1);return base(3,'m33-ops',3,'numeric','NIVEL 3 · PROCESO EN DOS ETAPAS','m_process',{prompt:`Un proceso usa ${math(`P=${mtex(P)}`)} y ${math(`\\mathbf x_0=${v2(x0)}^T`)}. Determine la componente ${idx+1} de ${math('\\mathbf x_2=P^2\\mathbf x_0')}.`,answerValue:x2[idx],hint:'Calcula primero \\(\\mathbf x_1=P\\mathbf x_0\\) y luego \\(\\mathbf x_2=P\\mathbf x_1\\).',explanation:display(`\\mathbf x_1=${v2(x1)}^T,\\qquad \\mathbf x_2=${v2(x2)}^T.`),visual:{kind:'matrixMultiply',A:P,B:[[x0[0]],[x0[1]]],C:[[x1[0]],[x1[1]]]},instruction:'Ejecuta dos actualizaciones sucesivas.'});};
+  T.m_transpose=c=>{const A=Array.from({length:3},()=>[c.ri(-5,5),c.ri(-5,5)]),AT=transpose(A);return base(3,'m33-ops',2,'mcq','NIVEL 3 · TRANSPUESTA RECTANGULAR','m_transpose',{prompt:`Determine ${math('A^T')} para ${math(`A=${mtex(A)}`)}.`,...optionSet(AT,[A,matScale(-1,AT),AT.map(r=>[...r].reverse()),[AT[1],AT[0]],AT.map(r=>r.map(Math.abs))],x=>math(mtex(x)),c.shuffle),hint:'Las filas de \\(A\\) se convierten en columnas de \\(A^T\\).',explanation:display(`A^T=${mtex(AT)}.`),visual:{kind:'matrixMultiply',A,C:AT},instruction:'Reorienta las filas como columnas.'});};
+  T.m_trace=c=>{const A=invertible2(c),B=invertible2(c),AB=matMul(A,B),ans=AB[0][0]+AB[1][1];return base(3,'m22-ops',3,'numeric','NIVEL 3 · TRAZA DEL PRODUCTO','m_trace',{prompt:`Sean ${math(`A=${mtex(A)}`)} y ${math(`B=${mtex(B)}`)}. Calcule ${math('\\operatorname{tr}(AB)')}.`,answerValue:ans,hint:'Calcula solo las entradas diagonales de \\(AB\\).',explanation:display(`AB=${mtex(AB)},\\qquad \\operatorname{tr}(AB)=${AB[0][0]}+${AB[1][1]}=${ans}.`),visual:{kind:'matrixMultiply',A,B,C:AB},instruction:'Extrae la traza del producto.'});};
+  T.m_rect_product=c=>{const A=Array.from({length:2},()=>Array.from({length:3},()=>c.ri(-4,5))),B=Array.from({length:3},()=>Array.from({length:2},()=>c.ri(-4,5))),C=matMul(A,B),i=c.ri(0,1),j=c.ri(0,1);return base(3,'m33-ops',4,'numeric','NIVEL 3 · PRODUCTO RECTANGULAR','m_rect_product',{prompt:`Sean ${math(`A=${mtex(A)}`)} y ${math(`B=${mtex(B)}`)}. Determine ${math(`(AB)_{${i+1}${j+1}}`)}.`,answerValue:C[i][j],hint:'Combina una fila de tres entradas con una columna de tres entradas.',explanation:display(`(AB)_{${i+1}${j+1}}=${C[i][j]}.`),visual:{kind:'matrixMultiply',A,B,C},instruction:'Calcula una entrada del producto rectangular.'});};
+
+  // MUNDO 4 · DETERMINANTES Y SISTEMAS
+  T.d_det3=c=>{const a=c.nz(),b=c.ri(-5,5),d=c.nz(),e=c.ri(-5,5),f=c.nz(),A=[[a,b,c.ri(-5,5)],[0,d,e],[0,0,f]],ans=a*d*f;return base(4,'m33-systems',1,'numeric','NIVEL 4 · DETERMINANTE 3×3','d_det3',{prompt:`Calcule ${math(`\\det(A)`)} para ${math(`A=${mtex(A)}`)}.`,answerValue:ans,hint:'La matriz es triangular; multiplica las entradas diagonales.',explanation:display(`\\det(A)=${a}(${d})(${f})=${ans}.`),visual:{kind:'determinant',A,det:ans},instruction:'Calcula el determinante sin expandir de más.'});};
+  T.d_properties=c=>{const d=c.nz(-8,8),r=c.pick([-4,-3,-2,2,3,4]),swaps=c.pick([1,2]),ans=d*r*(swaps%2?-1:1);return base(4,'m33-systems',2,'numeric','NIVEL 4 · PROPIEDADES DEL DETERMINANTE','d_properties',{prompt:`Sea ${math('A\\in M_{3\\times3}')} con ${math(`\\det(A)=${d}`)}. La matriz ${math('B')} se obtiene multiplicando una fila por ${math(String(r))} y realizando ${math(String(swaps))} intercambio${swaps===1?'':'s'} de filas. Determine ${math('\\det(B)')}.`,answerValue:ans,hint:'Cada intercambio cambia el signo y el escalamiento multiplica el determinante.',explanation:display(`\\det(B)=(${r})(-1)^{${swaps}}(${d})=${ans}.`),instruction:'Encadena operaciones elementales.'});};
+  T.d_param2=c=>{const r1=c.ri(-8,8),r2=c.ri(-8,8);let root1=c.ri(-6,6),root2=c.ri(-6,6);while(root1===root2)root2=c.ri(-6,6);const s=root1+root2,p=root1*root2;const b=c.nz(-5,5),cc=-p/b;if(!Number.isInteger(cc))return T.d_param2(makeContext(c.ri(1,1e9)));const A=[['k',b],[cc,`k${s>=0?'-':'+'}${Math.abs(s)}`]];return base(4,'m22-systems',2,'numeric','NIVEL 4 · PARÁMETRO DEL DETERMINANTE','d_param2',{prompt:`Los valores de ${math('k')} que hacen cero el determinante ${math(`\\det\\begin{bmatrix}k&${b}\\\\${cc}&k${s>=0?'-':'+'}${Math.abs(s)}\\end{bmatrix}`)} tienen cierto producto. Determine ese producto.`,answerValue:p,hint:'Forma el polinomio cuadrático y usa el producto de raíces.',explanation:display(`k^2-${s}k+${p}=0,\\qquad k_1k_2=${p}.`),instruction:'Determina el producto de los parámetros críticos.'});};
+  T.d_area=c=>{const u=[c.nz(-8,8),c.nz(-8,8)],v=[c.nz(-8,8),c.nz(-8,8)],ans=Math.abs(u[0]*v[1]-u[1]*v[0]);if(!ans)return T.d_area(makeContext(c.ri(1,1e9)));return base(4,'m22-systems',2,'numeric','NIVEL 4 · ÁREA POR DETERMINANTE','d_area',{prompt:`Calcule el área del paralelogramo generado por ${math(`\\mathbf u=${v2(u)}`)} y ${math(`\\mathbf v=${v2(v)}`)}.`,answerValue:ans,hint:'Toma el valor absoluto del determinante de los vectores.',explanation:display(`\\text{Área}=|${u[0]}(${v[1]})-${u[1]}(${v[0]})|=${ans}.`),visual:{kind:'vectors',u,v},instruction:'Mide el área orientada.'});};
+  T.d_augmented_tf=c=>{const vars=c.pick([2,3]),rows=c.pick([2,3,4]),M=Array.from({length:rows},()=>Array.from({length:vars+1},()=>c.ri(-5,7))),truth=c.pick([true,false]);const claimVars=truth?vars:vars+c.pick([-1,1]);return base(4,'m33-systems',2,'tf','NIVEL 4 · MATRIZ AUMENTADA','d_augmented_tf',{prompt:`La matriz aumentada ${math(atex(M))} representa un sistema de ${math(String(rows))} ecuaciones con ${math(String(claimVars))} incógnitas.`,answer:truth,hint:'La última columna contiene los términos independientes.',explanation:`Hay ${rows} filas y ${vars} columnas de coeficientes; la afirmación es ${truth?'verdadera':'falsa'}.`,visual:{kind:'augmented',matrix:M},instruction:'Interpreta la estructura del sistema.'});};
+  T.d_classify=c=>{const k=c.nz(-30,30),statements=[`Una fila ${math(`[0\\;0\\;0\\mid${k}]`)} implica inconsistencia.`,`Una fila completamente nula puede acompañar una variable libre.`,`Un pivote en cada columna de variables implica solución única.`,`Dos ecuaciones proporcionales siempre producen inconsistencia.`];return base(4,'m33-systems',3,'roman','NIVEL 4 · CLASIFICACIÓN DE SISTEMAS','d_classify',{prompt:`Sobre matrices aumentadas, son correctas:<ol class="roman-list" type="I">${statements.map(x=>`<li>${x}</li>`).join('')}</ol>`,...comboOptions('I, II y III',['I y II','II y IV','I, III y IV','II y III','Todas'],c.shuffle),hint:'Distingue contradicciones, filas redundantes y pivotes.',explanation:'I, II y III son correctas; ecuaciones proporcionales pueden representar la misma ecuación.',instruction:'Clasifica los resultados de una reducción.'});};
+  T.d_system2=c=>{const A=invertible2(c),x=[c.ri(-6,7),c.ri(-6,7)],b=matVec(A,x),ask=c.ri(0,1);return base(4,'m22-systems',3,'numeric','NIVEL 4 · SISTEMA 2×2','d_system2',{prompt:`Resuelva ${display(`\\begin{cases}${A[0][0]}x${A[0][1]>=0?'+':''}${A[0][1]}y=${b[0]},\\\\${A[1][0]}x${A[1][1]>=0?'+':''}${A[1][1]}y=${b[1]}.\\end{cases}`)} Determine ${math(ask===0?'x':'y')}.`,answerValue:x[ask],hint:'Elimina una variable y sustituye en la otra ecuación.',explanation:display(`(x,y)=${v2(x)}.`),visual:{kind:'systemLines',lines:[{m:-A[0][0]/A[0][1],b:b[0]/A[0][1]},{m:-A[1][0]/A[1][1],b:b[1]/A[1][1]}]},instruction:'Encuentra la intersección del sistema.'});};
+  T.d_rowop=c=>{const pivot=c.pick([1,-1,2,-2]),below=c.nz(-5,5),factor=-below/pivot;if(!Number.isInteger(factor))return T.d_rowop(makeContext(c.ri(1,1e9)));const M=[[pivot,c.ri(-4,5),c.ri(-4,5),c.ri(-5,8)],[below,c.ri(-4,5),c.ri(-4,5),c.ri(-5,8)],[c.ri(-4,4),c.ri(-4,4),c.ri(-4,4),c.ri(-5,8)]],correct=`R_2\\leftarrow R_2${factor>=0?'+':''}${factor}R_1`;const choices=[`R_2\\leftarrow R_2${-factor>=0?'+':''}${-factor}R_1`,`R_1\\leftarrow R_1${factor>=0?'+':''}${factor}R_2`,`R_3\\leftarrow R_3${factor>=0?'+':''}${factor}R_1`,`R_2\\leftarrow ${Math.abs(factor)||2}R_2-R_1`,`R_1\\leftrightarrow R_2`];return base(4,'m33-systems',4,'operation','NIVEL 4 · OPERACIÓN ELEMENTAL','d_rowop',{prompt:`En ${math(atex(M))}, ¿qué operación elimina la entrada ${math(String(below))} situada debajo del pivote ${math(String(pivot))}?`,...comboOptions(math(correct),choices.map(math),c.shuffle),hint:'Busca un múltiplo de la fila pivote que cancele la primera entrada de la segunda fila.',explanation:`La operación correcta es ${math(correct)}.`,visual:{kind:'gauss',matrix:M,op:correct},instruction:'Selecciona la eliminación exacta.'});};
+  T.d_system3=c=>{const {A,x,b,M}=system3FromSolution(c),weights=[c.nz(-3,3),c.nz(-3,3),c.nz(-3,3)],ans=dot(weights,x);return base(4,'m33-systems',4,'numeric','NIVEL 4 · SISTEMA 3×3','d_system3',{prompt:`Resuelva el sistema ${math(atex(M))} y calcule ${math(`${weights[0]}x${weights[1]>=0?'+':''}${weights[1]}y${weights[2]>=0?'+':''}${weights[2]}z`)}.`,answerValue:ans,hint:'Reduce la matriz aumentada hasta obtener tres pivotes.',explanation:display(`(x,y,z)=${v3(x)},\\qquad ${weights[0]}x${weights[1]>=0?'+':''}${weights[1]}y${weights[2]>=0?'+':''}${weights[2]}z=${ans}.`),visual:{kind:'gauss',matrix:M},instruction:'Completa una reducción de tres variables.'});};
+  T.d_consistency_param=c=>{const a=c.nz(-5,5),b=c.nz(-5,5),r=c.pick([-4,-3,-2,2,3,4]),d=c.nz(-8,8),ans=r*d,M=[[a,b,d],[r*a,r*b,'k']];return base(4,'m22-systems',3,'numeric','NIVEL 4 · CONSISTENCIA PARAMÉTRICA','d_consistency_param',{prompt:`Determine ${math('k')} para que ${math(atex(M))} represente un sistema consistente.`,answerValue:ans,hint:'La segunda fila de coeficientes es un múltiplo de la primera.',explanation:display(`k=${r}(${d})=${ans}.`),visual:{kind:'augmented',matrix:[[a,b,d],[r*a,r*b,ans]]},instruction:'Encuentra el valor que evita la contradicción.'});};
+
+  // MUNDO 5 · RETOS MIXTOS
+  T.mix_projection=c=>{const v=c.pick([[1,1],[1,-1],[2,1],[1,2]]),t=c.nz(-5,5),s=c.nz(-5,5),perp=[-v[1],v[0]],u=addV(scaleV(t,v),scaleV(s,perp)),proj=scaleV(t,v),res=subV(u,proj),ans=norm2(res);return base(5,'mixed-boss',3,'numeric','NIVEL 5 · DESCOMPOSICIÓN ORTOGONAL','mix_projection',{prompt:`Sea ${math(`\\mathbf u=${v2(u)}`)} y ${math(`\\mathbf v=${v2(v)}`)}. Si ${math('\\mathbf u=\\mathbf u_{\\parallel}+\\mathbf u_{\\perp}')} con ${math('\\mathbf u_{\\parallel}=\\operatorname{proj}_{\\mathbf v}(\\mathbf u)')}, calcule ${math('\\|\\mathbf u_{\\perp}\\|^2')}.`,answerValue:ans,hint:'Calcula la proyección, resta y evalúa la norma al cuadrado.',explanation:display(`\\mathbf u_{\\parallel}=${v2(proj)},\\quad \\mathbf u_{\\perp}=${v2(res)},\\quad \\|\\mathbf u_{\\perp}\\|^2=${ans}.`),visual:{kind:'projection',a:u,b:v,proj},instruction:'Descompón la trayectoria en partes paralela y perpendicular.'});};
+  T.mix_properties=c=>{const n=c.ri(2,10),pair=c.pick([['A','B'],['P','Q'],['M','N'],['C','D']]),X=pair[0],Y=pair[1],statements=[`${math(`(${X}${Y})^T=${Y}^T${X}^T`)}.`,`Si ${math(`${X}^2=${X}`)}, entonces ${math(`(I_${n}-${X})^2=I_${n}-${X}`)}.`,`Si ${math(`${X}${Y}=0`)}, necesariamente ${math(`${X}=0`)} o ${math(`${Y}=0`)}.`,`Dos matrices diagonales de orden ${math(String(n))} conmutan.`];return base(5,'mixed-boss',3,'roman','NIVEL 5 · PROPIEDADES MATRICIALES','mix_properties',{prompt:`Son correctas:<ol class="roman-list" type="I">${statements.map(x=>`<li>${x}</li>`).join('')}</ol>`,...comboOptions('I, II y IV',['I y II','II y III','I, III y IV','II, III y IV','Todas'],c.shuffle),hint:'La tercera afirmación admite contraejemplos con matrices no nulas.',explanation:'I, II y IV son correctas; III es falsa.',instruction:'Distingue propiedades estructurales.'});};
+  T.mix_process=c=>{const P=invertible2(c),x0=[c.ri(2,15),c.ri(2,15)],x1=matVec(P,x0),x2=matVec(P,x1),weights=[c.nz(-3,3),c.nz(-3,3)],ans=dot(weights,x2);return base(5,'mixed-boss',3,'numeric','NIVEL 5 · PROCESO MULTIETAPA','mix_process',{prompt:`Sea ${math(`P=${mtex(P)}`)} y ${math(`\\mathbf x_0=${v2(x0)}^T`)}. Calcule ${math(`${weights[0]}(x_2)_1${weights[1]>=0?'+':''}${weights[1]}(x_2)_2`)}, donde ${math('\\mathbf x_2=P^2\\mathbf x_0')}.`,answerValue:ans,hint:'Calcula \\(x_1\\), luego \\(x_2\\), y al final la combinación pedida.',explanation:display(`\\mathbf x_1=${v2(x1)}^T,\\quad \\mathbf x_2=${v2(x2)}^T,\\quad \\text{valor}=${ans}.`),visual:{kind:'matrixMultiply',A:P,B:[[x0[0]],[x0[1]]],C:[[x1[0]],[x1[1]]]},instruction:'Ejecuta dos etapas y una lectura final.'});};
+  T.mix_production=c=>{const {A,x,b,M}=system3FromSolution(c),ans=x.reduce((s,z)=>s+z,0);return base(5,'gauss-boss',4,'numeric','NIVEL 5 · SISTEMA DE PRODUCCIÓN','mix_production',{prompt:`Una producción satisface ${math(`A\\mathbf x=\\mathbf b`)}, con ${math(`A=${mtex(A)}`)} y ${math(`\\mathbf b=${v3(b)}^T`)}. Determine ${math('x_1+x_2+x_3')}.`,answerValue:ans,hint:'Resuelve el sistema por Gauss–Jordan.',explanation:display(`\\mathbf x=${v3(x)}^T,\\qquad x_1+x_2+x_3=${ans}.`),visual:{kind:'augmented',matrix:M},instruction:'Determina el plan total de producción.'});};
+  T.mix_det_properties=c=>{const A=invertible3(c),d=det3(A),r=c.pick([-4,-3,-2,2,3,4]),swaps=c.pick([1,2]),ans=d*r*(swaps%2?-1:1);return base(5,'mixed-boss',4,'numeric','NIVEL 5 · DETERMINANTE ENCADENADO','mix_det_properties',{prompt:`Sea ${math(`A=${mtex(A)}`)}. La matriz ${math('B')} se obtiene multiplicando una fila por ${math(String(r))} y realizando ${math(String(swaps))} intercambio${swaps===1?'':'s'} de filas. Calcule ${math('\\det(B)')}.`,answerValue:ans,hint:'Calcula primero \\(\\det(A)\\) y luego aplica los factores de las operaciones.',explanation:display(`\\det(A)=${d},\\qquad \\det(B)=(${r})(-1)^{${swaps}}(${d})=${ans}.`),visual:{kind:'determinant',A,det:d},instruction:'Encadena cálculo y propiedades.'});};
+  T.mix_consistency=c=>{const A=invertible3(c),x=[c.ri(-3,5),c.ri(-3,5),c.ri(-3,5)],b=matVec(A,x),M=A.map((r,i)=>[...r,b[i]]),truth=c.pick([true,false]);if(!truth)M[2]=M[0].map((z,i)=>i===3?2*z+1:2*z);return base(5,'gauss-boss',4,'tf','NIVEL 5 · CONSISTENCIA','mix_consistency',{prompt:`El sistema representado por ${math(atex(M))} es consistente.`,answer:truth,hint:'Busca una fila imposible o verifica que la matriz de coeficientes sea invertible.',explanation:truth?`La matriz de coeficientes tiene determinante ${det3(A)} distinto de cero, por lo que hay solución única.`:'La reducción produce una contradicción del tipo \\([0\\;0\\;0\\mid c]\\), con \\(c\\neq0\\).',visual:{kind:'augmented',matrix:M},instruction:'Clasifica el sistema antes del combate.'});};
+  T.mix_gauss_op=c=>{const pivot=c.pick([1,-1,2,-2]),below=c.nz(-6,6),f=-below/pivot;if(!Number.isInteger(f))return T.mix_gauss_op(makeContext(c.ri(1,1e9)));const M=[[pivot,c.ri(-4,5),c.ri(-4,5),c.ri(-8,8)],[below,c.ri(-4,5),c.ri(-4,5),c.ri(-8,8)],[c.ri(-4,5),c.ri(-4,5),c.ri(-4,5),c.ri(-8,8)]],correct=`R_2\\leftarrow R_2${f>=0?'+':''}${f}R_1`;return base(5,'gauss-boss',5,'operation','NIVEL 5 · GAUSS–JORDAN','mix_gauss_op',{prompt:`Seleccione la operación que anula la entrada ${math(String(below))} debajo del pivote ${math(String(pivot))} en ${math(atex(M))}.`,...comboOptions(math(correct),[`R_2\\leftarrow R_2${-f>=0?'+':''}${-f}R_1`,`R_1\\leftarrow R_1${f>=0?'+':''}${f}R_2`,`R_3\\leftarrow R_3${f>=0?'+':''}${f}R_1`,`R_1\\leftrightarrow R_2`,`R_2\\leftarrow ${Math.abs(f)||2}R_2-R_1`].map(math),c.shuffle),hint:'Elige un múltiplo que haga cero la primera entrada de la segunda fila.',explanation:`La operación correcta es ${math(correct)}.`,visual:{kind:'gauss',matrix:M,op:correct},instruction:'Ejecuta la primera maniobra de reducción.'});};
+  T.mix_rect=c=>{const A=Array.from({length:3},()=>Array.from({length:3},()=>c.ri(-4,5))),B=Array.from({length:3},()=>Array.from({length:2},()=>c.ri(-4,5))),C=matMul(A,B),i=c.ri(0,2),j=c.ri(0,1);return base(5,'mixed-boss',5,'numeric','NIVEL 5 · PRODUCTO RECTANGULAR','mix_rect',{prompt:`Sean ${math(`A=${mtex(A)}`)} y ${math(`B=${mtex(B)}`)}. Determine ${math(`(AB)_{${i+1}${j+1}}`)}.`,answerValue:C[i][j],hint:`Multiplica la fila ${i+1} de \\(A\\) por la columna ${j+1} de \\(B\\).`,explanation:display(`(AB)_{${i+1}${j+1}}=${C[i][j]}.`),visual:{kind:'matrixMultiply',A,B,C},instruction:'Calcula la entrada crítica del producto.'});};
+  T.mix_system_expr=c=>{const {x,M}=system3FromSolution(c),w=[c.nz(-4,4),c.nz(-4,4),c.nz(-4,4)],ans=dot(w,x);return base(5,'gauss-boss',5,'numeric','NIVEL 5 · SISTEMA 3×3','mix_system_expr',{prompt:`Resuelva ${math(atex(M))} y determine ${math(`${w[0]}x${w[1]>=0?'+':''}${w[1]}y${w[2]>=0?'+':''}${w[2]}z`)}.`,answerValue:ans,hint:'Reduce la matriz aumentada y sustituye la solución en la expresión.',explanation:display(`(x,y,z)=${v3(x)},\\qquad \\text{valor}=${ans}.`),visual:{kind:'gauss',matrix:M},instruction:'Resuelve y evalúa una combinación lineal.'});};
+  T.mix_investment=c=>{const total=c.pick([80,100,120,150]),x=c.pick([10,20,25,30]),ratio=c.pick([2,3]),z=ratio*x,y=total-x-z;if(y<=0)return T.mix_investment(makeContext(c.ri(1,1e9)));const rates=c.pick([[4,6,9],[3,7,10],[5,8,12]]),yieldValue=(rates[0]*x+rates[1]*y+rates[2]*z)/100;return base(5,'gauss-boss',5,'numeric','NIVEL 5 · MODELO DE INVERSIÓN','mix_investment',{prompt:`Se invierten ${math(String(total))} millones en tres alternativas con tasas de ${math(`${rates[0]}\\%`)}, ${math(`${rates[1]}\\%`)} y ${math(`${rates[2]}\\%`)}. El rendimiento total es ${math(texNum(yieldValue))} millones y la tercera inversión es ${math(String(ratio))} veces la primera. Determine la segunda inversión.`,answerValue:y,hint:'Plantea capital total, rendimiento y la relación entre la primera y la tercera inversión.',explanation:display(`(x,y,z)=${v3([x,y,z])}\\text{ millones},\\qquad y=${y}.`),instruction:'Resuelve el modelo financiero completo.'});};
+
+  const BASE_LEVELS={
+    1:['v2_combo','v2_norm_unit','v2_norm_param','v2_orth_param','v2_direction','v2_projection','v2_work','v2_difference_norm','v2_displacement','v2_dot_angle'],
+    2:['v3_combo','v3_norm_param','v3_dot','v3_orth_param','v3_pythagoras_tf','v3_distance','v3_work','v3_projection_component','v3_linear_param','v3_sum_norm'],
+    3:['m_combo','m_product_entry','m_commute_tf','m_dimensions','m_equation','m_jordan_power','m_process','m_transpose','m_trace','m_rect_product'],
+    4:['d_det3','d_properties','d_param2','d_area','d_augmented_tf','d_classify','d_system2','d_rowop','d_system3','d_consistency_param'],
+    5:['mix_projection','mix_properties','mix_process','mix_production','mix_det_properties','mix_consistency','mix_gauss_op','mix_rect','mix_system_expr','mix_investment']
+  };
+
+  // Portales: varias plantillas avanzadas por mundo para evitar ciclos cortos.
+  const PORTAL_LEVELS={
+    1:['v2_projection','v2_difference_norm','v2_orth_param','v2_work'],
+    2:['v3_projection_component','v3_linear_param','v3_orth_param','v3_sum_norm'],
+    3:['m_jordan_power','m_equation','m_process','m_rect_product'],
+    4:['d_properties','d_param2','d_system3','d_consistency_param'],
+    5:['mix_projection','mix_process','mix_det_properties','mix_system_expr','mix_investment']
+  };
+
+  // Jefes: combinaciones multi-etapa, regeneradas antes de cada escudo.
+  const BOSS_LEVELS={
+    1:['v2_combo','v2_projection','v2_difference_norm','v2_displacement'],
+    2:['v3_linear_param','v3_projection_component','v3_work','v3_sum_norm'],
+    3:['m_equation','m_process','m_trace','m_rect_product'],
+    4:['d_properties','d_system3','d_consistency_param','d_rowop'],
+    5:['mix_production','mix_det_properties','mix_system_expr','mix_investment']
+  };
+
+  function generate(template,seed,overrides={}){
+    const fn=T[template];if(!fn)throw new Error(`Plantilla desconocida: ${template}`);
+    const q=fn(makeContext(seed));q.template=template;q.variantSeed=seed>>>0;
+    return Object.assign(q,overrides);
+  }
   function build(seed){
-    const {ri,pick,shuffle}=makeContext(seed);
     const qs=[];let id=1;
-    const add=q=>qs.push({id:id++,boss:false,...q});
-
-    // NIVEL 1 — VECTORES EN R2. Cálculo directo, geometría y aplicaciones.
-    {
-      const u=[ri(-4,4)||2,ri(-4,4)||-1],v=[ri(-4,4)||-3,ri(-4,4)||2],c=[3*u[0]-2*v[0],3*u[1]-2*v[1]];
-      const d=[[3*u[0]+2*v[0],3*u[1]+2*v[1]],[2*u[0]-3*v[0],2*u[1]-3*v[1]],[3*u[1]-2*v[1],3*u[0]-2*v[0]],[-c[0],c[1]],[c[0],-c[1]]];
-      add({level:1,topic:'v2d-ops',difficulty:1,type:'mcq',badge:'NIVEL 1 · COMBINACIÓN VECTORIAL',prompt:`Sean ${math(String.raw`\mathbf u=${v2(u)}`)} y ${math(String.raw`\mathbf v=${v2(v)}`)}. Calcule ${math(String.raw`3\mathbf u-2\mathbf v`)}.`,...optionSet(c,d,x=>math(v2(x)),shuffle),hint:`Calcula primero ${math(String.raw`3\mathbf u`)} y ${math(String.raw`2\mathbf v`)}; después resta componente a componente.`,explanation:`${display(String.raw`3\mathbf u-2\mathbf v=${v2(c)}.`)}`,visual:{kind:'vectors',u,v,result:c,showResult:false},instruction:'Programa la trayectoria combinando los dos impulsos.'});
-    }
-    {
-      const u=pick([[6,8],[-6,8],[5,-12],[-8,-15]]),n=Math.hypot(...u),unit=[u[0]/n,u[1]/n];
-      const statements=[`${math(String.raw`\|\mathbf u\|=${n}`)}`,`${math(String.raw`\widehat{\mathbf u}=${v2(unit)}`)}`,`${math(String.raw`2\mathbf u=${v2([2*u[0],2*u[1]])}`)}`,'El vector opuesto tiene la misma dirección y el mismo sentido.'];
-      const correct='I, II y III';
-      add({level:1,topic:'v2d-geometry',difficulty:1,type:'roman',badge:'NIVEL 1 · AFIRMACIONES I–IV',prompt:`Considere ${math(String.raw`\mathbf u=${v2(u)}`)}. Son correctas:<ol class="roman-list" type="I">${statements.map(s=>`<li>${s}</li>`).join('')}</ol>`,...comboOptions(correct,['I y II','II y IV','I, III y IV','II y III','Todas'],shuffle),hint:'Comprueba la norma, divide cada componente por ella y distingue dirección de sentido.',explanation:`I, II y III son correctas. El vector opuesto conserva la dirección, pero cambia el sentido.`,visual:{kind:'vectors',u,v:[-u[0],-u[1]]},instruction:'Valida el protocolo geométrico del vector.'});
-    }
-    {
-      const m=pick([3,4,5,8]),n=pick(m===3?[5]:m===4?[5]:m===5?[13]:[17]),k=Math.sqrt(n*n-m*m);
-      add({level:1,topic:'v2d-geometry',difficulty:2,type:'numeric',badge:'NIVEL 1 · PARÁMETRO ENTERO',prompt:`El vector ${math(String.raw`\mathbf v=(k,${m})`)} tiene norma ${math(String.raw`${n}`)} y ${math(String.raw`k>0`)}. Determine el valor entero de ${math('k')}.`,answerValue:k,hint:`Plantea ${math(String.raw`k^2+${m}^2=${n}^2`)} y usa la condición ${math('k>0')}.`,explanation:`${display(String.raw`k=\sqrt{${n*n}-${m*m}}=${k}.`)}`,visual:{kind:'vectors',u:[k,m],v:[0,0]},instruction:'Calcula el parámetro que estabiliza la norma.'});
-    }
-    {
-      const a=4,b=2,c=-3,k=6;
-      add({level:1,topic:'v2d-geometry',difficulty:2,type:'numeric',badge:'NIVEL 1 · ORTOGONALIDAD',prompt:`Determine ${math('k')} para que los vectores ${math(String.raw`(k,${a})`)} y ${math(String.raw`(${b},${c})`)} sean perpendiculares.`,answerValue:k,hint:'La perpendicularidad exige que el producto punto sea cero.',explanation:`${display(String.raw`${b}k+${a}(${c})=0\quad\Longrightarrow\quad k=${k}.`)}`,visual:{kind:'vectors',u:[k,a],v:[b,c]},instruction:'Ajusta el ángulo de intercepción a noventa grados.'});
-    }
-    {
-      const u=pick([[2,6],[-3,9],[4,-8]]),lambda=pick([-3,-2,2,4]),v=[lambda*u[0],lambda*u[1]],same=lambda>0;
-      add({level:1,topic:'v2d-ops',difficulty:2,type:'tf',badge:'NIVEL 1 · VERDADERO/FALSO',prompt:`Los vectores ${math(String.raw`\mathbf u=${v2(u)}`)} y ${math(String.raw`\mathbf v=${v2(v)}`)} tienen la misma dirección y el mismo sentido.`,answer:same,hint:'Escribe uno como múltiplo escalar del otro y revisa el signo del escalar.',explanation:`${math(String.raw`\mathbf v=${lambda}\mathbf u`)}. ${same?'Como el escalar es positivo, la afirmación es verdadera.':'Como el escalar es negativo, las direcciones coinciden pero los sentidos son opuestos.'}`,visual:{kind:'vectors',u,v},instruction:'Determina la relación direccional de las rutas.'});
-    }
-    {
-      const pair=pick([{a:[6,2],b:[2,0]},{a:[4,6],b:[0,3]},{a:[-3,5],b:[1,1]}]),a=pair.a,b=pair.b;const dot=a[0]*b[0]+a[1]*b[1],den=b[0]*b[0]+b[1]*b[1],coef=dot/den,proj=[coef*b[0],coef*b[1]];
-      const d=[[proj[0]+1,proj[1]],[proj[0],proj[1]+1],a,b,[a[0]-proj[0],a[1]-proj[1]]];
-      add({level:1,topic:'v2d-geometry',difficulty:3,type:'mcq',badge:'NIVEL 1 · PROYECCIÓN',prompt:`Calcule ${math(String.raw`\operatorname{proj}_{\mathbf b}(\mathbf a)`)} para ${math(String.raw`\mathbf a=${v2(a)}`)} y ${math(String.raw`\mathbf b=${v2(b)}`)}.`,...optionSet(proj,d,x=>math(v2(x)),shuffle),hint:`Usa ${math(String.raw`\operatorname{proj}_{\mathbf b}(\mathbf a)=\frac{\mathbf a\cdot\mathbf b}{\|\mathbf b\|^2}\mathbf b`)}.`,explanation:`${display(String.raw`\operatorname{proj}_{\mathbf b}(\mathbf a)=${v2(proj)}.`)}`,visual:{kind:'projection',a,b,proj},instruction:'Alinea el dron con el corredor mediante la proyección.'});
-    }
-    {
-      const F=pick([[40,15],[25,-10],[30,20]]),d=pick([[6,2],[4,-3],[5,1]]),W=F[0]*d[0]+F[1]*d[1];
-      add({level:1,topic:'v2d-ops',difficulty:3,type:'numeric',badge:'NIVEL 1 · APLICACIÓN',prompt:`Una fuerza ${math(String.raw`\mathbf F=${v2(F)}\,\mathrm N`)} desplaza un bloque ${math(String.raw`\mathbf d=${v2(d)}\,\mathrm m`)}. Calcule el trabajo ${math(String.raw`W=\mathbf F\cdot\mathbf d`)} en joules.`,answerValue:W,hint:'Multiplica componentes correspondientes y suma.',explanation:`${display(String.raw`W=${F[0]}(${d[0]})+${F[1]}(${d[1]})=${W}\ \mathrm J.`)}`,visual:{kind:'vectors',u:F,v:d},instruction:'Calcula la energía transferida durante el desplazamiento.'});
-    }
-    {
-      const nu=pick([5,7,8]),nv=pick([6,8,10]),dot=pick([8,12,20]),ans=nu*nu+nv*nv-2*dot;
-      add({level:1,topic:'v2d-geometry',difficulty:4,type:'numeric',badge:'NIVEL 1 · IDENTIDAD VECTORIAL',prompt:`Sean ${math(String.raw`\|\mathbf u\|=${nu}`)}, ${math(String.raw`\|\mathbf v\|=${nv}`)} y ${math(String.raw`\mathbf u\cdot\mathbf v=${dot}`)}. Determine el valor entero de ${math(String.raw`\|\mathbf u-\mathbf v\|^2`)}.`,answerValue:ans,hint:`Expande ${math(String.raw`\|\mathbf u-\mathbf v\|^2=\|\mathbf u\|^2+\|\mathbf v\|^2-2\mathbf u\cdot\mathbf v`)}.`,explanation:`${display(String.raw`\|\mathbf u-\mathbf v\|^2=${nu}^2+${nv}^2-2(${dot})=${ans}.`)}`,instruction:'Calcula la separación cuadrática entre las trayectorias.'});
-    }
-
-    // NIVEL 2 — VECTORES EN R3 sin producto cruz.
-    {
-      const u=[ri(-4,4)||1,ri(-4,4)||2,ri(-4,4)||-1],v=[ri(-3,4)||2,ri(-3,4)||-1,ri(-3,4)||3],c=[2*u[0]-v[0],2*u[1]-v[1],2*u[2]-v[2]];
-      const d=[[2*u[0]+v[0],2*u[1]+v[1],2*u[2]+v[2]],[u[0]-2*v[0],u[1]-2*v[1],u[2]-2*v[2]],[c[1],c[0],c[2]],[-c[0],c[1],c[2]],[c[0],c[1],-c[2]]];
-      add({level:2,topic:'v3d-ops',difficulty:1,type:'mcq',badge:'NIVEL 2 · VECTOR EN R³',prompt:`Sean ${math(String.raw`\mathbf u=${v3(u)}`)} y ${math(String.raw`\mathbf v=${v3(v)}`)}. Calcule ${math(String.raw`2\mathbf u-\mathbf v`)}.`,...optionSet(c,d,x=>math(v3(x)),shuffle),hint:'Opera de manera independiente las tres componentes.',explanation:`${display(String.raw`2\mathbf u-\mathbf v=${v3(c)}.`)}`,instruction:'Define el impulso tridimensional de la nave.'});
-    }
-    {
-      const u=pick([[2,3,6],[-2,6,3],[6,-3,2]]),n=7;
-      add({level:2,topic:'v3d-dot',difficulty:1,type:'numeric',badge:'NIVEL 2 · NORMA EN R³',prompt:`Determine la norma de ${math(String.raw`\mathbf u=${v3(u)}`)}.`,answerValue:n,hint:`Usa ${math(String.raw`\|\mathbf u\|=\sqrt{u_1^2+u_2^2+u_3^2}`)}.`,explanation:`${display(String.raw`\|\mathbf u\|=\sqrt{${u[0]}^2+${u[1]}^2+${u[2]}^2}=7.`)}`,instruction:'Calibra el módulo de navegación tridimensional.'});
-    }
-    {
-      const u=[ri(-3,4)||2,ri(-3,4)||-1,ri(-3,4)||3],v=[ri(-3,4)||1,ri(-3,4)||4,ri(-3,4)||-2],ans=u[0]*v[0]+u[1]*v[1]+u[2]*v[2];
-      add({level:2,topic:'v3d-dot',difficulty:2,type:'numeric',badge:'NIVEL 2 · PRODUCTO PUNTO 3D',prompt:`Calcule ${math(String.raw`\mathbf u\cdot\mathbf v`)} para ${math(String.raw`\mathbf u=${v3(u)}`)} y ${math(String.raw`\mathbf v=${v3(v)}`)}.`,answerValue:ans,hint:'Multiplica y suma las tres parejas de componentes.',explanation:`${display(String.raw`\mathbf u\cdot\mathbf v=${u[0]}(${v[0]})+${u[1]}(${v[1]})+${u[2]}(${v[2]})=${ans}.`)}`,instruction:'Sincroniza los sensores mediante el producto escalar.'});
-    }
-    {
-      const a=2,b=-1,c=3,d=1,q=5,k=-1;
-      add({level:2,topic:'v3d-dot',difficulty:2,type:'numeric',badge:'NIVEL 2 · PARÁMETRO 3D',prompt:`Determine ${math('k')} para que ${math(String.raw`\mathbf u=(${a},${b},k)`)} sea perpendicular a ${math(String.raw`\mathbf v=(${c},${d},${q})`)}.`,answerValue:k,hint:'Impón producto punto igual a cero.',explanation:`${display(String.raw`${a}(${c})+(${b})(${d})+${q}k=0\quad\Longrightarrow\quad k=${k}.`)}`,instruction:'Corrige la tercera componente para lograr ortogonalidad.'});
-    }
-    {
-      const u=[1,2,-1],v=[2,-1,0],dot=0;
-      add({level:2,topic:'v3d-dot',difficulty:2,type:'tf',badge:'NIVEL 2 · VERDADERO/FALSO',prompt:`Los vectores ${math(String.raw`\mathbf u=${v3(u)}`)} y ${math(String.raw`\mathbf v=${v3(v)}`)} son ortogonales.`,answer:true,hint:'Calcula su producto punto.',explanation:`${math(String.raw`\mathbf u\cdot\mathbf v=1(2)+2(-1)+(-1)(0)=0`)}, por tanto la afirmación es verdadera.`,instruction:'Verifica la perpendicularidad en el espacio.'});
-    }
-    {
-      const u=[1,0,2],v=[0,3,-1];const sum=[1,3,1],dot=-2;
-      const statements=[`${math(String.raw`\mathbf u+\mathbf v=${v3(sum)}`)}`,`${math(String.raw`\mathbf u\cdot\mathbf v=${dot}`)}`,`${math(String.raw`\|\mathbf u\|=\sqrt5`)}`,`${math(String.raw`\|\mathbf v\|=\sqrt{10}`)}`];
-      add({level:2,topic:'v3d-ops',difficulty:3,type:'roman',badge:'NIVEL 2 · AFIRMACIONES 3D',prompt:`Sean ${math(String.raw`\mathbf u=${v3(u)}`)} y ${math(String.raw`\mathbf v=${v3(v)}`)}. Son correctas:<ol class="roman-list" type="I">${statements.map(s=>`<li>${s}</li>`).join('')}</ol>`,...comboOptions('I, II, III y IV',['I, II y III','I y IV','II y III','I, III y IV','II, III y IV'],shuffle),hint:'Comprueba una por una las operaciones y las normas.',explanation:'Las cuatro afirmaciones son correctas.',instruction:'Audita el paquete completo de información vectorial.'});
-    }
-    {
-      const P=pick([[1,-2,3],[-2,1,4],[0,3,-1]]),Q=pick([[5,1,-1],[2,-3,1],[4,0,2]]),d=[Q[0]-P[0],Q[1]-P[1],Q[2]-P[2]],ans=d.reduce((s,x)=>s+x*x,0);
-      add({level:2,topic:'v3d-ops',difficulty:3,type:'numeric',badge:'NIVEL 2 · DISTANCIA 3D',prompt:`Sean ${math(String.raw`P=${v3(P)}`)} y ${math(String.raw`Q=${v3(Q)}`)}. Determine el valor entero de ${math(String.raw`\|\overrightarrow{PQ}\|^2`)}.`,answerValue:ans,hint:'Resta coordenadas para formar el vector y suma los cuadrados de sus componentes.',explanation:`${display(String.raw`\overrightarrow{PQ}=${v3(d)},\qquad \|\overrightarrow{PQ}\|^2=${ans}.`)}`,instruction:'Calcula la distancia cuadrática hasta la baliza.'});
-    }
-    {
-      const F=[20,-10,15],d=[3,4,-2],W=F[0]*d[0]+F[1]*d[1]+F[2]*d[2];
-      add({level:2,topic:'v3d-dot',difficulty:4,type:'numeric',badge:'NIVEL 2 · TRABAJO EN R³',prompt:`Una fuerza ${math(String.raw`\mathbf F=${v3(F)}\,\mathrm N`)} produce un desplazamiento ${math(String.raw`\mathbf d=${v3(d)}\,\mathrm m`)}. Calcule el trabajo en joules.`,answerValue:W,hint:'El trabajo es el producto punto entre fuerza y desplazamiento.',explanation:`${display(String.raw`W=20(3)-10(4)+15(-2)=${W}\ \mathrm J.`)}`,instruction:'Determina la energía del desplazamiento espacial.'});
-    }
-
-    // NIVEL 3 — MATRICES 2x2 y 3x3: dimensiones, operaciones, productos y aplicaciones.
-    {
-      const A=[[ri(-3,4),ri(-3,4)],[ri(-3,4),ri(-3,4)]],B=[[ri(-2,4),ri(-2,4)],[ri(-2,4),ri(-2,4)]],C=A.map((r,i)=>r.map((x,j)=>2*x-3*B[i][j]));
-      const d=[A.map((r,i)=>r.map((x,j)=>2*x+3*B[i][j])),A.map((r,i)=>r.map((x,j)=>3*x-2*B[i][j])),C.map(r=>[r[1],r[0]]),C.map(r=>r.map(x=>-x)),[[C[0][0],C[1][0]],[C[0][1],C[1][1]]]];
-      add({level:3,topic:'m22-ops',difficulty:1,type:'mcq',badge:'NIVEL 3 · OPERACIÓN 2×2',prompt:`Sean ${math(String.raw`A=${mtex(A)}`)} y ${math(String.raw`B=${mtex(B)}`)}. Calcule ${math(String.raw`2A-3B`)}.`,...optionSet(C,d,x=>math(mtex(x)),shuffle),hint:'Multiplica cada matriz por su escalar y resta entrada a entrada.',explanation:`${display(String.raw`2A-3B=${mtex(C)}.`)}`,visual:{kind:'matrixAdd',A,B,C},instruction:'Combina los módulos matriciales con los coeficientes correctos.'});
-    }
-    {
-      const A=[[1,2],[3,-1]],B=[[2,-1],[4,3]],C=[[10,5],[2,-6]],ans=C[0][1];
-      add({level:3,topic:'m22-ops',difficulty:1,type:'numeric',badge:'NIVEL 3 · ENTRADA DE AB',prompt:`Sean ${math(String.raw`A=${mtex(A)}`)} y ${math(String.raw`B=${mtex(B)}`)}. Calcule la entrada ${math(String.raw`(AB)_{12}`)}.`,answerValue:ans,hint:'Multiplica la primera fila de A por la segunda columna de B.',explanation:`${display(String.raw`(AB)_{12}=1(-1)+2(3)=5.`)}`,visual:{kind:'matrixMultiply',A,B,C,highlight:[0,1]},instruction:'Calcula únicamente la celda solicitada del producto.'});
-    }
-    {
-      const A=[[1,2],[0,-1]],B=[[3,1],[2,4]],AB=[[7,9],[-2,-4]],BA=[[3,5],[2,0]];
-      add({level:3,topic:'m22-ops',difficulty:2,type:'tf',badge:'NIVEL 3 · NO CONMUTATIVIDAD',prompt:`Para ${math(String.raw`A=${mtex(A)}`)} y ${math(String.raw`B=${mtex(B)}`)}, se cumple ${math(String.raw`AB=BA`)}.`,answer:false,hint:'Calcula al menos una entrada de cada producto.',explanation:`${math(String.raw`AB=${mtex(AB)}`)} y ${math(String.raw`BA=${mtex(BA)}`)}; no coinciden.`,visual:{kind:'matrixMultiply',A,B,C:AB},instruction:'Comprueba si el orden de los procesos puede intercambiarse.'});
-    }
-    {
-      const statements=['El producto \\(AB\\) existe y es \\(3\\times4\\).','El producto \\(BA\\) no existe.','El producto \\(A^TB\\) no existe.','El producto \\(B^TA\\) existe y es \\(4\\times2\\).'];
-      add({level:3,topic:'m33-ops',difficulty:2,type:'roman',badge:'NIVEL 3 · DIMENSIONES',prompt:`Sean ${math(String.raw`A\in M_{3\times2}`)} y ${math(String.raw`B\in M_{2\times4}`)}. Son correctas:<ol class="roman-list" type="I">${statements.map(s=>`<li>${s}</li>`).join('')}</ol>`,...comboOptions('I, II y III',['I y II','II y IV','I y IV','I, III y IV','Todas'],shuffle),hint:'Un producto existe si coinciden las dimensiones internas.',explanation:'I, II y III son correctas; \\(B^TA\\) no existe.',instruction:'Verifica la compatibilidad dimensional antes de conectar módulos.'});
-    }
-    {
-      const A=[[1,2],[-1,4]],B=[[4,-1],[5,1]],X=B.map((r,i)=>r.map((x,j)=>(x+2*A[i][j])/3)),ans=X[1][0];
-      add({level:3,topic:'m22-ops',difficulty:3,type:'numeric',badge:'NIVEL 3 · ECUACIÓN MATRICIAL',prompt:`La matriz ${math('X')} satisface ${math(String.raw`3X-2A=B`)}, donde ${math(String.raw`A=${mtex(A)}`)} y ${math(String.raw`B=${mtex(B)}`)}. Calcule la entrada ${math(String.raw`x_{21}`)}.`,answerValue:ans,hint:'Despeja \\(X=\\frac13(B+2A)\\).',explanation:`${display(String.raw`X=\frac13\left(${mtex(B)}+2${mtex(A)}\right),\qquad x_{21}=${ans}.`)}`,visual:{kind:'matrixAdd',A,B,C:X},instruction:'Despeja la matriz desconocida del sistema de control.'});
-    }
-    {
-      const A=[[1,1],[0,1]],n=pick([4,5,6,7]);
-      add({level:3,topic:'m22-ops',difficulty:3,type:'numeric',badge:'NIVEL 3 · POTENCIA MATRICIAL',prompt:`Sea ${math(String.raw`A=${mtex(A)}`)}. Calcule la entrada ${math(String.raw`(A^{${n}})_{12}`)}.`,answerValue:n,hint:'Calcula \\(A^2\\) y \\(A^3\\) para identificar el patrón.',explanation:`${display(String.raw`A^n=\begin{bmatrix}1&n\\0&1\end{bmatrix},\qquad (A^{${n}})_{12}=${n}.`)}`,visual:{kind:'matrixMultiply',A,B:A,C:[[1,n],[0,1]]},instruction:'Predice la evolución de un proceso matricial repetido.'});
-    }
-    {
-      const C=[[2,1,3],[1,4,2]],q=[40,25,30],r=[195,200];
-      add({level:3,topic:'m33-ops',difficulty:3,type:'numeric',badge:'NIVEL 3 · APLICACIÓN MATRICIAL',prompt:`La matriz de consumo es ${math(String.raw`C=${mtex(C)}`)} y el plan de producción es ${math(String.raw`\mathbf q=${v3(q)}^T`)}. Calcule la segunda componente de ${math(String.raw`C\mathbf q`)}.`,answerValue:r[1],hint:'Multiplica la segunda fila de \\(C\\) por el vector de producción.',explanation:`${display(String.raw`(C\mathbf q)_2=1(40)+4(25)+2(30)=200.`)}`,visual:{kind:'matrixMultiply',A:C,B:[[40],[25],[30]],C:[[195],[200]]},instruction:'Calcula el consumo total del segundo recurso.'});
-    }
-    {
-      const A=[[1,-2,4],[0,3,5]],T=[[1,0],[-2,3],[4,5]];
-      const d=[A,[[1,-2],[4,0],[3,5]],[[1,0],[-2,5],[4,3]],[[1,4],[-2,5],[0,3]],T.map(r=>r.map(x=>-x))];
-      add({level:3,topic:'m33-ops',difficulty:4,type:'mcq',badge:'NIVEL 3 · TRANSPUESTA',prompt:`Determine la transpuesta de ${math(String.raw`A=${mtex(A)}`)}.`,...optionSet(T,d,x=>math(mtex(x)),shuffle),hint:'Cada fila de \\(A\\) se convierte en una columna.',explanation:`${display(String.raw`A^T=${mtex(T)}.`)}`,visual:{kind:'transpose',A,C:T},instruction:'Reorienta la matriz sin alterar sus entradas.'});
-    }
-
-    // NIVEL 4 — DETERMINANTES, SISTEMAS Y GAUSS-JORDAN.
-    {
-      const A=[[1,2,0],[-3,4,5],[2,-1,3]],det=55;
-      add({level:4,topic:'m33-systems',difficulty:1,type:'numeric',badge:'NIVEL 4 · DETERMINANTE 3×3',prompt:`Calcule ${math(String.raw`\det(A)`)} para ${math(String.raw`A=${mtex(A)}`)}.`,answerValue:det,hint:'Expande por la primera fila o aplica operaciones por renglón.',explanation:`${display(String.raw`\det(A)=1(17)-2(-19)=55.`)}`,visual:{kind:'determinant',A,det},instruction:'Calcula el valor que estabiliza el reactor.'});
-    }
-    {
-      const d=pick([-5,-4,3,6]),n=3,det2=Math.pow(2,n)*d,detT=d,detNeg=-d;
-      const correct=[det2,detT,detNeg],opts=[[2*d,d,-d],[4*d,d,-d],[8*d,-d,d],[-8*d,d,-d],[8*d,d,d]];
-      add({level:4,topic:'m33-systems',difficulty:2,type:'mcq',badge:'NIVEL 4 · PROPIEDADES DEL DETERMINANTE',prompt:`Sea ${math(String.raw`A\in M_{3\times3}`)} con ${math(String.raw`\det(A)=${d}`)}. Determine el triple ${math(String.raw`\bigl(\det(2A),\det(A^T),\det(-A)\bigr)`)}.`,...optionSet(correct,opts,x=>math(String.raw`(${x[0]},${x[1]},${x[2]})`),shuffle),hint:'En orden tres, \\(\\det(cA)=c^3\\det(A)\\), \\(\\det(A^T)=\\det(A)\\) y \\(\\det(-A)=-\\det(A)\\).',explanation:`${display(String.raw`\bigl(\det(2A),\det(A^T),\det(-A)\bigr)=(${det2},${detT},${detNeg}).`)}`,instruction:'Aplica propiedades sin expandir la matriz.'});
-    }
-    {
-      const a=pick([2,3,4]),b=pick([2,6,8]),c=pick([1,2,4]);const product=-b*c;
-      add({level:4,topic:'m22-systems',difficulty:2,type:'numeric',badge:'NIVEL 4 · PARÁMETRO DEL DETERMINANTE',prompt:`Los valores de ${math('k')} satisfacen ${math(String.raw`\det\begin{bmatrix}k&${b}\\${c}&k-${a}\end{bmatrix}=0`)}. Determine el producto de todos los valores de ${math('k')}.`,answerValue:product,hint:'Obtén el polinomio \\(k(k-a)-bc=0\\) y usa el producto de raíces.',explanation:`El polinomio es ${math(String.raw`k^2-${a}k-${b*c}=0`)}; el producto de sus raíces es ${math(String.raw`${product}`)}.`,visual:{kind:'determinant',A:[[0,b],[c,-a]]},instruction:'Determina el producto de los parámetros críticos.'});
-    }
-    {
-      const u=[4,1],v=[1,3],area=Math.abs(u[0]*v[1]-u[1]*v[0]);
-      add({level:4,topic:'m22-systems',difficulty:2,type:'numeric',badge:'NIVEL 4 · ÁREA ORIENTADA',prompt:`Determine el área del paralelogramo generado por ${math(String.raw`\mathbf u=${v2(u)}`)} y ${math(String.raw`\mathbf v=${v2(v)}`)}.`,answerValue:area,hint:'El área es el valor absoluto del determinante formado por los vectores.',explanation:`${display(String.raw`\text{Área}=\left|\det\begin{bmatrix}4&1\\1&3\end{bmatrix}\right|=|12-1|=11.`)}`,visual:{kind:'vectors',u,v},instruction:'Calcula el área de la zona de navegación.'});
-    }
-    {
-      const A=[[1,2,-1,4],[0,3,5,-2],[2,-1,0,6]];
-      add({level:4,topic:'m33-systems',difficulty:2,type:'tf',badge:'NIVEL 4 · MATRIZ AUMENTADA',prompt:`La matriz aumentada ${math(atex(A))} representa un sistema de tres ecuaciones con tres incógnitas.`,answer:true,hint:'La última columna corresponde a los términos independientes.',explanation:'Hay tres filas y tres columnas de coeficientes antes de la barra; la afirmación es verdadera.',visual:{kind:'augmented',matrix:A},instruction:'Interpreta correctamente la estructura del sistema.'});
-    }
-    {
-      const statements=['La fila \\([0\\;0\\;0\\mid5]\\) implica inconsistencia.','Una fila completamente nula puede producir una variable libre.','Si hay pivote en cada columna de variables, la solución es única.','Dos ecuaciones proporcionales siempre producen un sistema inconsistente.'];
-      add({level:4,topic:'m33-systems',difficulty:3,type:'roman',badge:'NIVEL 4 · CLASIFICACIÓN DE SISTEMAS',prompt:`Sobre la lectura de matrices aumentadas, son correctas:<ol class="roman-list" type="I">${statements.map(s=>`<li>${s}</li>`).join('')}</ol>`,...comboOptions('I, II y III',['I y II','II y IV','I, III y IV','II y III','Todas'],shuffle),hint:'Distingue filas imposibles, variables libres y pivotes.',explanation:'I, II y III son correctas. Dos ecuaciones proporcionales pueden representar la misma ecuación y dar infinitas soluciones.',instruction:'Clasifica los posibles resultados de la reducción.'});
-    }
-    {
-      const x=4,y=-1;const M=pick([[[2,1],[1,-1]],[[3,1],[1,-1]],[[2,-1],[3,1]]]);const a=M[0][0],b=M[0][1],c=M[1][0],d=M[1][1],r1=a*x+b*y,r2=c*x+d*y;
-      add({level:4,topic:'m22-systems',difficulty:3,type:'numeric',badge:'NIVEL 4 · SISTEMA 2×2',prompt:`Resuelva el sistema ${display(String.raw`\begin{cases}${a}x${b>=0?'+':''}${b}y=${r1},\\${c}x${d>=0?'+':''}${d}y=${r2}.
-\end{cases}`)} Ingrese el valor de ${math('x')}.`,answerValue:x,hint:'Elimina una variable mediante operaciones por renglón.',explanation:`La solución es ${math(String.raw`(x,y)=(${x},${y})`)}.`,visual:{kind:'systemLines',lines:[{m:-a/b,b:r1/b},{m:-c/d,b:r2/d}]},instruction:'Encuentra la coordenada de intersección de las dos rectas.'});
-    }
-    {
-      const M=[[1,-2,3,4],[3,1,-1,2],[-2,4,1,7]];
-      const correct=String.raw`R_2\leftarrow R_2-3R_1`;
-      const choices=[String.raw`R_2\leftarrow R_2+3R_1`,String.raw`R_1\leftarrow R_1-3R_2`,String.raw`R_3\leftarrow R_3-2R_1`,String.raw`R_2\leftarrow 3R_2-R_1`,String.raw`R_1\leftrightarrow R_2`];
-      add({level:4,topic:'m33-systems',difficulty:4,type:'operation',badge:'NIVEL 4 · OPERACIÓN ELEMENTAL',prompt:`En la matriz aumentada ${math(atex(M))}, ¿qué operación elimina el ${math('3')} situado debajo del primer pivote?`,...comboOptions(math(correct),choices.map(math),shuffle),hint:'Resta tres veces la fila pivote a la segunda fila.',explanation:`La operación correcta es ${math(correct)}.`,visual:{kind:'gauss',matrix:M,op:'R2 <- R2 - 3R1'},instruction:'Selecciona la maniobra exacta de eliminación.'});
-    }
-
-    // NIVEL 5 — RETOS MIXTOS Y CÁLCULO MULTIETAPA.
-    {
-      const u=[7,1],v=[2,2],dot=16,den=8,proj=[4,4],perp=[3,-3],ans=18;
-      add({level:5,topic:'mixed-boss',difficulty:3,type:'numeric',badge:'NIVEL 5 · DESCOMPOSICIÓN ORTOGONAL',prompt:`Sea ${math(String.raw`\mathbf u=${v2(u)}`)} y ${math(String.raw`\mathbf v=${v2(v)}`)}. Escriba ${math(String.raw`\mathbf u=\mathbf u_{\parallel}+\mathbf u_{\perp}`)}, donde ${math(String.raw`\mathbf u_{\parallel}=\operatorname{proj}_{\mathbf v}(\mathbf u)`)}. Calcule ${math(String.raw`\|\mathbf u_{\perp}\|^2`)}.`,answerValue:ans,hint:'Calcula la proyección, resta el vector paralelo a \(\mathbf u\) y aplica la norma al cuadrado.',explanation:`${display(String.raw`\mathbf u_{\parallel}=(4,4),\qquad \mathbf u_{\perp}=(3,-3),\qquad \|\mathbf u_{\perp}\|^2=18.`)}`,visual:{kind:'projection',a:u,b:v,proj},instruction:'Descompón la trayectoria antes de entrar en el campo de cometas.'});
-    }
-    {
-      const statements=['\\((AB)^T=B^TA^T\\).','Si \\(A^2=A\\), entonces \\((I-A)^2=I-A\\).','Si \\(AB=0\\), necesariamente \\(A=0\\) o \\(B=0\\).','Dos matrices diagonales del mismo orden conmutan.'];
-      add({level:5,topic:'mixed-boss',difficulty:3,type:'roman',badge:'NIVEL 5 · PROPIEDADES MATRICIALES',prompt:`Son correctas:<ol class="roman-list" type="I">${statements.map(s=>`<li>${s}</li>`).join('')}</ol>`,...comboOptions('I, II y IV',['I y II','II y III','I, III y IV','II, III y IV','Todas'],shuffle),hint:'La tercera afirmación se refuta con matrices no nulas cuyo producto es cero.',explanation:'I, II y IV son correctas; III es falsa.',instruction:'Distingue propiedades verdaderas de distractores teóricos.'});
-    }
-    {
-      const P=[[2,1],[1,3]],x0=[20,10],x1=[50,50],x2=[150,200];
-      add({level:5,topic:'mixed-boss',difficulty:3,type:'numeric',badge:'NIVEL 5 · PROCESO EN DOS ETAPAS',prompt:`La matriz ${math(String.raw`P=${mtex(P)}`)} representa un proceso de actualización y ${math(String.raw`\mathbf x_0=(20,10)^T`)}. Calcule la segunda componente de ${math(String.raw`\mathbf x_2=P^2\mathbf x_0`)}.`,answerValue:200,hint:'Calcula primero \(\mathbf x_1=P\mathbf x_0\) y después \(\mathbf x_2=P\mathbf x_1\).',explanation:`${display(String.raw`\mathbf x_1=(50,50)^T,\qquad \mathbf x_2=(150,200)^T.`)}`,visual:{kind:'matrixMultiply',A:P,B:[[20],[10]],C:[[50],[50]]},instruction:'Predice el estado después de dos etapas.'});
-    }
-    {
-      const A=[[2,1,3],[1,3,2],[4,2,1]],x=[30,40,20],b=[160,190,220];
-      add({level:5,topic:'gauss-boss',difficulty:4,type:'numeric',badge:'NIVEL 5 · SISTEMA DE PRODUCCIÓN',prompt:`Una empresa satisface ${math(String.raw`A\mathbf x=\mathbf b`)}, con ${math(String.raw`A=${mtex(A)}`)} y ${math(String.raw`\mathbf b=${v3(b)}^T`)}. Si la solución es entera, determine ${math(String.raw`x_1+x_2+x_3`)}.`,answerValue:90,hint:'Resuelve el sistema 3×3 mediante Gauss–Jordan.',explanation:`La solución es ${math(String.raw`\mathbf x=(30,40,20)^T`)}, por lo que la suma es ${math('90')}.`,visual:{kind:'augmented',matrix:[[2,1,3,160],[1,3,2,190],[4,2,1,220]]},instruction:'Determina el plan total de producción.'});
-    }
-    {
-      const A=[[1,2,0],[-3,4,5],[2,-1,3]],d=55,ans=110;
-      add({level:5,topic:'mixed-boss',difficulty:4,type:'numeric',badge:'NIVEL 5 · DETERMINANTE POR PROPIEDADES',prompt:`Sea ${math(String.raw`A=${mtex(A)}`)}. La matriz ${math('B')} se obtiene multiplicando la primera fila de ${math('A')} por ${math('-2')} e intercambiando luego las filas segunda y tercera. Determine ${math(String.raw`\det(B)`)}.`,answerValue:ans,hint:'Multiplicar una fila por \\(-2\\) multiplica el determinante por \\(-2\\); intercambiar filas cambia el signo.',explanation:`Como ${math(String.raw`\det(A)=55`)}, se tiene ${math(String.raw`\det(B)=(-2)(-1)(55)=110`)}.`,visual:{kind:'determinant',A,det:d},instruction:'Encadena correctamente dos propiedades del determinante.'});
-    }
-    {
-      const M=[[1,2,-1,1],[2,4,-2,2],[-1,-2,1,-1]];
-      add({level:5,topic:'gauss-boss',difficulty:4,type:'tf',badge:'NIVEL 5 · CONSISTENCIA',prompt:`El sistema representado por ${math(atex(M))} tiene una única solución.`,answer:false,hint:'Observa que las filas son proporcionales.',explanation:'Las ecuaciones son equivalentes; hay variables libres y, por tanto, infinitas soluciones.',visual:{kind:'augmented',matrix:M},instruction:'Clasifica el sistema antes de entrar al portal.'});
-    }
-    {
-      const M=[[1,2,-1,1],[2,5,1,6],[-1,-1,4,3]];
-      const correct=String.raw`R_2\leftarrow R_2-2R_1`;
-      const choices=[String.raw`R_2\leftarrow R_2+2R_1`,String.raw`R_3\leftarrow R_3-R_1`,String.raw`R_1\leftarrow R_1-2R_2`,String.raw`R_2\leftarrow 2R_2-R_1`,String.raw`R_1\leftrightarrow R_3`];
-      add({level:5,topic:'gauss-boss',difficulty:5,type:'operation',badge:'NIVEL 5 · GAUSS–JORDAN',prompt:`Para iniciar una reducción eficiente de ${math(atex(M))}, seleccione la operación que anula la entrada ${math('2')} de la posición ${math('(2,1)')}.`,...comboOptions(math(correct),choices.map(math),shuffle),hint:'Usa la primera fila como pivote sin modificarla.',explanation:`La operación es ${math(correct)}.`,visual:{kind:'gauss',matrix:M,op:'R2 <- R2 - 2R1'},instruction:'Ejecuta la primera maniobra del protocolo final.'});
-    }
-    {
-      const A=[[1,2,0],[0,1,3],[2,0,1]],B=[[2,1],[1,0],[3,-1]],ans=10;
-      add({level:5,topic:'mixed-boss',difficulty:5,type:'numeric',badge:'NIVEL 5 · PRODUCTO RECTANGULAR',prompt:`Sean ${math(String.raw`A=${mtex(A)}`)} y ${math(String.raw`B=${mtex(B)}`)}. Determine la entrada ${math(String.raw`(AB)_{21}`)}.`,answerValue:ans,hint:'Multiplica la segunda fila de \\(A\\) por la primera columna de \\(B\\).',explanation:`${display(String.raw`(AB)_{21}=0(2)+1(1)+3(3)=10.`)}`,visual:{kind:'matrixMultiply',A,B,C:[[4,1],[10,-3],[7,1]]},instruction:'Calcula la entrada crítica del producto rectangular.'});
-    }
-    {
-      const M=[[1,1,1,6],[2,-1,3,9],[-1,4,1,10]],sol=[1,2,3];
-      add({level:5,topic:'gauss-boss',difficulty:5,type:'numeric',badge:'NIVEL 5 · SISTEMA 3×3',prompt:`Resuelva el sistema representado por ${math(atex(M))}. Ingrese el valor de ${math(String.raw`x+2y+3z`)}.`,answerValue:14,hint:'Reduzca la matriz aumentada hasta obtener los tres pivotes.',explanation:`La solución es ${math(String.raw`(x,y,z)=(1,2,3)`)} y ${math(String.raw`x+2y+3z=14`)}.`,visual:{kind:'gauss',matrix:M},instruction:'Completa el cálculo antes de enfrentar a los jefes.'});
-    }
-    {
-      const x=25,y=25,z=50;
-      add({level:5,topic:'gauss-boss',difficulty:5,type:'numeric',badge:'NIVEL 5 · MODELO DE INVERSIÓN',prompt:`Se invierten ${math('100')} millones en tres alternativas con tasas de ${math('4\%')}, ${math('6\%')} y ${math('9\%')}. El rendimiento total es ${math('7')} millones y la tercera inversión es el doble de la primera. Determine la cantidad invertida en la segunda alternativa.`,answerValue:y,hint:'Plantea un sistema con capital total, rendimiento y la relación entre la primera y la tercera inversión.',explanation:`El sistema produce ${math(String.raw`(x,y,z)=(25,25,50)`)}; la segunda inversión es ${math('25')} millones.`,instruction:'Resuelve el modelo financiero de tres variables.'});
-    }
-
+    Object.entries(BASE_LEVELS).forEach(([level,names])=>names.forEach((name,i)=>qs.push(generate(name,(seed^((+level)*0x9E3779B9)^((i+1)*0x85EBCA6B))>>>0,{id:id++,boss:false}))));
     return qs;
   }
-
   function buildBlackHole(seed){
-    const {shuffle}=makeContext((seed||0)^0x9E3779B9);let id=1001;const qs=[];const add=q=>qs.push({id:id++,advanced:true,...q});
-    add({level:1,topic:'v2d-geometry',difficulty:4,type:'numeric',badge:'PORTAL · PROYECCIÓN Y NORMA',prompt:`Sean ${math(String.raw`\mathbf u=(9,7)`)} y ${math(String.raw`\mathbf v=(2,1)`)}. Calcule ${math(String.raw`3\left\|\mathbf u-\operatorname{proj}_{\mathbf v}(\mathbf u)\right\|^2+\mathbf u\cdot\mathbf v`)}.`,answerValue:40,hint:'Calcula primero la proyección exacta; después evalúa la norma al cuadrado y el producto punto.',explanation:`${math(String.raw`\operatorname{proj}_{\mathbf v}(\mathbf u)=(10,5)`)}; así, ${math(String.raw`\mathbf u-\operatorname{proj}_{\mathbf v}(\mathbf u)=(-1,2)`)} y el valor solicitado es ${math('40')}.`,visual:{kind:'projection',a:[9,7],b:[2,1],proj:[10,5]},instruction:'Resuelve el cálculo exacto para controlar el portal.'});
-    add({level:2,topic:'v3d-dot',difficulty:4,type:'numeric',badge:'PORTAL · PARÁMETRO 3D',prompt:`El vector ${math(String.raw`\mathbf u=(k,2,-1)`)} es perpendicular a ${math(String.raw`\mathbf v=(3,-2,5)`)}. Determine ${math('k')}.`,answerValue:3,hint:'Iguala el producto punto a cero.',explanation:`${math(String.raw`3k-4-5=0`)}, de donde ${math(String.raw`k=3`)}.`,instruction:'Ajusta el parámetro tridimensional del salto.'});
-    add({level:3,topic:'m22-ops',difficulty:4,type:'numeric',badge:'PORTAL · POTENCIA MATRICIAL',prompt:`Sea ${math(String.raw`A=\begin{bmatrix}1&2\\0&1\end{bmatrix}`)}. Determine la entrada ${math(String.raw`(A^{12})_{12}`)}.`,answerValue:24,hint:'Identifica el patrón de las potencias de una matriz triangular de Jordan.',explanation:`${math(String.raw`A^n=\begin{bmatrix}1&2n\\0&1\end{bmatrix}`)}, así que la entrada es ${math('24')}.`,visual:{kind:'matrixMultiply',A:[[1,2],[0,1]],B:[[1,2],[0,1]],C:[[1,24],[0,1]]},instruction:'Predice la duodécima iteración del módulo.'});
-    add({level:4,topic:'m33-systems',difficulty:5,type:'numeric',badge:'PORTAL · DETERMINANTE',prompt:`Sea ${math(String.raw`A\in M_{3\times3}`)} con ${math(String.raw`\det(A)=-4`)}. La matriz ${math('B')} se obtiene de ${math('A')} multiplicando dos filas por ${math('3')} e intercambiándolas. Determine ${math(String.raw`\det(B)`)}.`,answerValue:36,hint:'Dos escalas multiplican por \\(3^2\\); un intercambio multiplica por \\(-1\\).',explanation:`${math(String.raw`\det(B)=3^2(-1)(-4)=36`)}.`,instruction:'Encadena tres propiedades sin expandir matrices.'});
-    add({level:5,topic:'gauss-boss',difficulty:5,type:'roman',badge:'PORTAL FINAL · AFIRMACIONES',prompt:`Considere un sistema cuadrado ${math(String.raw`A\mathbf x=\mathbf b`)} de orden tres. Son correctas:<ol class="roman-list" type="I"><li>Si ${math(String.raw`\det(A)\ne0`)}, la solución es única.</li><li>Una fila ${math(String.raw`[0\;0\;0\mid1]`)} implica inconsistencia.</li><li>Si ${math(String.raw`\det(A)=0`)}, el sistema siempre tiene infinitas soluciones.</li><li>Cramer solo es aplicable cuando ${math(String.raw`\det(A)\ne0`)}.</li></ol>`,...comboOptions('I, II y IV',['I y II','II y III','I, III y IV','II, III y IV','Todas'],shuffle),hint:'Un determinante cero también puede corresponder a un sistema sin solución.',explanation:'I, II y IV son correctas.',instruction:'Valida los criterios antes del salto final.'});
+    const qs=[];let id=1001;
+    Object.entries(PORTAL_LEVELS).forEach(([level,names])=>names.forEach((name,i)=>{const q=generate(name,(seed^((+level)*0xC2B2AE35)^((i+7)*0x27D4EB2D))>>>0,{id:id++,advanced:true});q.badge=`PORTAL · ${q.badge.replace(/^NIVEL \d+ · /,'')}`;q.difficulty=Math.max(4,q.difficulty||1);qs.push(q);}));
     return qs;
   }
-
   function buildBoss(seed){
-    const {shuffle}=makeContext((seed||0)^0xC2B2AE35);let id=2001;const qs=[];const add=q=>qs.push({id:id++,boss:true,...q});
-
-    add({level:1,difficulty:5,type:'numeric',badge:'JEFE NIVEL 1 · SISTEMA VECTORIAL',prompt:`Determine ${math(String.raw`a+b`)} si ${display(String.raw`a(1,2)+b(3,-1)=(11,1).`)}`,answerValue:5,hint:'Iguala componentes y resuelve el sistema de dos ecuaciones.',explanation:`Se obtiene ${math(String.raw`a=2`)} y ${math(String.raw`b=3`)}, así que ${math(String.raw`a+b=5`)}.`,instruction:'Rompe el escudo del jefe resolviendo ambos parámetros.'});
-    add({level:1,difficulty:5,type:'numeric',badge:'JEFE NIVEL 1 · FUERZA RESULTANTE',prompt:`Dos cables ejercen ${math(String.raw`\mathbf F_1=(120,50)`)} N y ${math(String.raw`\mathbf F_2=(-30,90)`)} N. Calcule el valor entero de ${math(String.raw`\|\mathbf F_1+\mathbf F_2\|^2`)}.`,answerValue:27700,hint:'Suma las fuerzas y calcula el cuadrado de la norma del resultado.',explanation:`La resultante es ${math(String.raw`(90,140)`)} y ${math(String.raw`\|(90,140)\|^2=90^2+140^2=27700`)}.`,visual:{kind:'vectors',u:[120,50],v:[-30,90],result:[90,140]},instruction:'Calcula la intensidad cuadrática exacta para perforar el blindaje.'});
-    add({level:1,difficulty:5,type:'roman',badge:'JEFE NIVEL 1 · IDENTIDADES',prompt:`Sean ${math(String.raw`\|\mathbf u\|=5`)}, ${math(String.raw`\|\mathbf v\|=8`)} y ${math(String.raw`\mathbf u\cdot\mathbf v=20`)}. Son correctas:<ol class="roman-list" type="I"><li>${math(String.raw`\cos\theta=\tfrac12`)}</li><li>${math(String.raw`\theta=60^\circ`)}</li><li>${math(String.raw`\|\mathbf u-\mathbf v\|=7`)}</li><li>${math(String.raw`\|\mathbf u+\mathbf v\|^2=129`)}</li></ol>`,...comboOptions('Todas',['I y II','I, II y III','II y IV','I, III y IV','II, III y IV'],shuffle),hint:'Use las identidades de norma del sumando y la diferencia.',explanation:'Las cuatro afirmaciones son correctas: \\(\\cos\\theta=1/2\\), \\(\\theta=60^\\circ\\), \\(\\|\\mathbf u-\\mathbf v\\|=7\\) y \\(\\|\\mathbf u+\\mathbf v\\|^2=129\\).',instruction:'Revisa cuidadosamente las cuatro afirmaciones antes de disparar.'});
-
-    add({level:2,difficulty:5,type:'numeric',badge:'JEFE NIVEL 2 · PROYECCIÓN 3D',prompt:`Sean ${math(String.raw`\mathbf u=(4,-1,5)`)} y ${math(String.raw`\mathbf v=(2,1,-2)`)}. Calcule el numerador de la primera componente de ${math(String.raw`\operatorname{proj}_{\mathbf v}(\mathbf u)`)} cuando se expresa con denominador ${math(String.raw`\|\mathbf v\|^2`)}.`,answerValue:-6,hint:'El numerador es \\((\\mathbf u\\cdot\\mathbf v)v_1\\).',explanation:`${math(String.raw`\mathbf u\cdot\mathbf v=-3`)} y el numerador solicitado es ${math(String.raw`-3(2)=-6`)}.`,instruction:'Calcula el componente exacto del vector de ataque.'});
-    add({level:2,difficulty:5,type:'numeric',badge:'JEFE NIVEL 2 · DISTANCIA Y TRABAJO',prompt:`Una nave pasa de ${math(String.raw`P=(1,-2,3)`)} a ${math(String.raw`Q=(5,1,-1)`)} bajo la fuerza ${math(String.raw`\mathbf F=(2,-1,4)`)}. Calcule el trabajo ${math(String.raw`\mathbf F\cdot\overrightarrow{PQ}`)}.`,answerValue:-11,hint:'Forme primero \\(\\overrightarrow{PQ}=Q-P\\).',explanation:`${math(String.raw`\overrightarrow{PQ}=(4,3,-4)`)} y el trabajo es ${math(String.raw`2(4)-1(3)+4(-4)=-11`)}.`,instruction:'Integra desplazamiento y fuerza en un solo cálculo.'});
-    add({level:2,difficulty:5,type:'tf',badge:'JEFE NIVEL 2 · ORTOGONALIDAD',prompt:`Si ${math(String.raw`\mathbf u=(1,2,-1)`)} y ${math(String.raw`\mathbf v=(2,-1,0)`)}, entonces ${math(String.raw`\|\mathbf u+\mathbf v\|^2=\|\mathbf u\|^2+\|\mathbf v\|^2`)}.`,answer:true,hint:'La igualdad de Pitágoras equivale a ortogonalidad.',explanation:`Como ${math(String.raw`\mathbf u\cdot\mathbf v=0`)}, la igualdad es verdadera.`,instruction:'Reconoce la identidad geométrica del escudo.'});
-
-    add({level:3,difficulty:5,type:'numeric',badge:'JEFE NIVEL 3 · ECUACIÓN MATRICIAL',prompt:`Sea ${math(String.raw`3X-2A=B`)}, con ${math(String.raw`A=\begin{bmatrix}1&2\\-1&4\end{bmatrix}`)} y ${math(String.raw`B=\begin{bmatrix}5&-2\\7&1\end{bmatrix}`)}. Calcule ${math(String.raw`9x_{22}-3x_{12}`)}.`,answerValue:25,hint:'Despeje \\(X=\\frac13(B+2A)\\) y extraiga las dos entradas.',explanation:`${math(String.raw`x_{22}=3`)} y ${math(String.raw`x_{12}=\tfrac23`)}, por lo que ${math(String.raw`9x_{22}-3x_{12}=25`)}.`,instruction:'Resuelve la ecuación matricial antes de atacar.'});
-    add({level:3,difficulty:5,type:'numeric',badge:'JEFE NIVEL 3 · PRODUCTOS EN ORDEN',prompt:`Sean ${math(String.raw`A=\begin{bmatrix}1&2\\0&-1\end{bmatrix}`)} y ${math(String.raw`B=\begin{bmatrix}3&1\\2&4\end{bmatrix}`)}. Calcule ${math(String.raw`\operatorname{tr}(AB-BA)`)}.`,answerValue:0,hint:'La traza de un conmutador \\(AB-BA\\) es cero; también puede verificarse directamente.',explanation:`${math(String.raw`\operatorname{tr}(AB)=\operatorname{tr}(BA)`)}; el resultado es ${math('0')}.`,instruction:'Detecta una invariancia oculta del producto matricial.'});
-    add({level:3,difficulty:5,type:'roman',badge:'JEFE NIVEL 3 · PROPIEDADES',prompt:`Sean ${math(String.raw`A,B\in M_{3\times3}`)}. Son correctas:<ol class="roman-list" type="I"><li>${math(String.raw`(AB)^T=B^TA^T`)}</li><li>Si \(A\) y \(B\) son diagonales, \(AB\) es diagonal.</li><li>Si \(AB=0\), entonces \(A=0\) o \(B=0\).</li><li>Si \(A^2=A\), entonces \((I-A)^2=I-A\).</li></ol>`,...comboOptions('I, II y IV',['I y II','II y III','I, III y IV','II, III y IV','Todas'],shuffle),hint:'Busque un contraejemplo para la afirmación III.',explanation:'I, II y IV son correctas.',instruction:'Distingue propiedades estructurales del álgebra matricial.'});
-
-    add({level:4,difficulty:6,type:'numeric',badge:'JEFE NIVEL 4 · DETERMINANTE ENCADENADO',prompt:`Sea ${math(String.raw`A\in M_{3\times3}`)} con ${math(String.raw`\det(A)=-4`)}. La matriz ${math('B')} se obtiene de ${math('A')} multiplicando la primera fila por ${math('-2')}, la segunda por ${math('3')} e intercambiando después las filas primera y tercera. Determine ${math(String.raw`\det(B)`)}.`,answerValue:-24,hint:'Multiplique los factores asociados a cada operación elemental.',explanation:`${math(String.raw`\det(B)=(-2)(3)(-1)(-4)=-24`)}.`,instruction:'Encadena tres operaciones sin expandir ningún determinante.'});
-    add({level:4,difficulty:6,type:'numeric',badge:'JEFE NIVEL 4 · CONSISTENCIA PARAMÉTRICA',prompt:`Determine ${math('k')} para que la matriz aumentada ${math(String.raw`\left[\begin{array}{cc|c}1&2&3\\2&4&k\end{array}\right]`)} represente un sistema consistente.`,answerValue:6,hint:'La segunda fila de coeficientes es dos veces la primera.',explanation:`Para evitar una contradicción se necesita ${math(String.raw`k=2(3)=6`)}.`,visual:{kind:'augmented',matrix:[[1,2,3],[2,4,6]]},instruction:'Encuentra el único valor que evita la inconsistencia.'});
-    add({level:4,difficulty:6,type:'operation',badge:'JEFE NIVEL 4 · GAUSS–JORDAN',prompt:`En ${math(String.raw`\left[\begin{array}{ccc|c}1&2&-1&1\\2&5&1&6\\-1&-1&4&3\end{array}\right]`)}, después de aplicar ${math(String.raw`R_2\leftarrow R_2-2R_1`)}, ¿qué operación elimina la entrada ${math('-1')} de la posición ${math('(3,1)')}?`,...comboOptions(math(String.raw`R_3\leftarrow R_3+R_1`),[math(String.raw`R_3\leftarrow R_3-R_1`),math(String.raw`R_1\leftarrow R_1+R_3`),math(String.raw`R_3\leftarrow -R_3+R_1`),math(String.raw`R_1\leftrightarrow R_3`),math(String.raw`R_3\leftarrow R_3+2R_1`)],shuffle),hint:'Sume la fila pivote a la tercera fila.',explanation:`La operación correcta es ${math(String.raw`R_3\leftarrow R_3+R_1`)}.`,visual:{kind:'gauss',matrix:[[1,2,-1,1],[0,1,3,4],[-1,-1,4,3]]},instruction:'Ejecuta el segundo paso correcto de la reducción.'});
-
-    add({level:5,difficulty:7,type:'numeric',badge:'JEFE FINAL ALFA · SISTEMA 3×3',prompt:`Resuelva ${display(String.raw`\begin{cases}x+y+z=60,\\2x+3y+z=140,\\x+2y+4z=120.\end{cases}`)} Calcule ${math(String.raw`2x+y+3z`)}.`,answerValue:100,hint:'Use Gauss–Jordan; la solución es entera.',explanation:`La solución es ${math(String.raw`(x,y,z)=(20,30,10)`)} y el valor solicitado es ${math('100')}.`,instruction:'Resuelve completamente el sistema que protege al jefe Alfa.'});
-    add({level:5,difficulty:7,type:'numeric',badge:'JEFE FINAL ALFA · DETERMINANTE Y PRODUCTO',prompt:`Sean ${math(String.raw`A=\begin{bmatrix}1&2&0\\-1&3&1\\2&0&4\end{bmatrix}`)} y ${math(String.raw`B=\begin{bmatrix}2&0&1\\1&-1&2\\0&3&1\end{bmatrix}`)}. Calcule ${math(String.raw`\det(AB)`)}.`,answerValue:-264,hint:'Use \\(\\det(AB)=\\det(A)\\det(B)\\) y calcule dos determinantes 3×3.',explanation:`${math(String.raw`\det(A)=24`)} y ${math(String.raw`\det(B)=-11`)}, por tanto ${math(String.raw`\det(AB)=-264`)}.`,instruction:'Calcula dos determinantes antes de abrir fuego.'});
-    add({level:5,difficulty:7,type:'roman',badge:'JEFE FINAL BETA · SISTEMAS',prompt:`Considere el sistema ${math(String.raw`A\mathbf x=\mathbf b`)} de orden tres. Son correctas:<ol class="roman-list" type="I"><li>Si la RREF contiene una fila ${math(String.raw`[0\ 0\ 0\mid c]`)} con ${math(String.raw`c\ne0`)}, no hay solución.</li><li>Si hay tres pivotes en las columnas de variables, la solución es única.</li><li>Si ${math(String.raw`\det(A)=0`)}, necesariamente hay infinitas soluciones.</li><li>Si una variable es libre y el sistema es consistente, hay infinitas soluciones.</li></ol>`,...comboOptions('I, II y IV',['I y II','II y III','I, III y IV','II, III y IV','Todas'],shuffle),hint:'Un determinante cero puede dar infinitas soluciones o ninguna.',explanation:'I, II y IV son correctas.',instruction:'Clasifica todos los escenarios antes de localizar al jefe Beta.'});
-    add({level:5,difficulty:7,type:'numeric',badge:'JEFE FINAL BETA · MODELO DE RECURSOS',prompt:`Una empresa produce tres artículos. Los consumos por unidad son las columnas de ${math(String.raw`A=\begin{bmatrix}2&1&3\\1&3&2\\4&2&1\end{bmatrix}`)} y las disponibilidades son ${math(String.raw`\mathbf b=(220,210,190)^T`)}. Resuelva ${math(String.raw`A\mathbf x=\mathbf b`)} y calcule ${math(String.raw`x_1+x_2+x_3`)}.`,answerValue:100,hint:'Reduzca la matriz aumentada de orden tres.',explanation:`La solución es ${math(String.raw`(x_1,x_2,x_3)=(20,30,50)`)} y la suma es ${math('100')}.`,visual:{kind:'augmented',matrix:[[2,1,3,220],[1,3,2,210],[4,2,1,190]]},instruction:'Calcula el plan de producción para desactivar el último núcleo.'});
-
+    const qs=[];let id=2001;
+    Object.entries(BOSS_LEVELS).forEach(([level,names])=>names.forEach((name,i)=>{const q=generate(name,(seed^((+level)*0x165667B1)^((i+11)*0xD3A2646C))>>>0,{id:id++,boss:true});q.badge=(+level===5?`JEFE FINAL · `:`JEFE NIVEL ${level} · `)+q.badge.replace(/^NIVEL \d+ · /,'');q.difficulty=Math.max(+level===5?7:5,q.difficulty||1);qs.push(q);}));
     return qs;
   }
+  function regenerate(q,seed){
+    if(!q?.template||!T[q.template])return clone(q);
+    const preserve={};
+    ['id','sourceId','sourceWorld','scene','sector','gradeValue','topicLabel','boss','advanced'].forEach(k=>{if(q[k]!==undefined)preserve[k]=q[k];});
+    const fresh=generate(q.template,seed,preserve);
+    if(q.badge?.startsWith('PORTAL'))fresh.badge=`PORTAL · ${fresh.badge.replace(/^NIVEL \d+ · /,'')}`;
+    if(q.badge?.startsWith('JEFE FINAL'))fresh.badge=`JEFE FINAL · ${fresh.badge.replace(/^NIVEL \d+ · /,'')}`;
+    else if(q.badge?.startsWith('JEFE NIVEL'))fresh.badge=`JEFE NIVEL ${q.sourceWorld||fresh.level} · ${fresh.badge.replace(/^NIVEL \d+ · /,'')}`;
+    fresh.variantSerial=(q.variantSerial||0)+1;
+    return fresh;
+  }
 
-  global.NVQuestions={build,buildBlackHole,buildBoss};
+  global.NVQuestions={build,buildBlackHole,buildBoss,regenerate};
 })(window);

@@ -1066,3 +1066,58 @@ body.playing .app-shell{height:100dvh;min-height:0;overflow:hidden}
   .astro-compass-copy span{font-size:.52rem}
   .space-stats .astro-message-stat{display:inline-flex!important;max-width:52vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }
+
+
+/* v3.3 · Finalización visible y separación entre nota y puntos de combate */
+.finish-btn-top{margin-left:auto;white-space:nowrap;box-shadow:0 0 16px rgba(255,69,108,.24)}
+.finish-btn-top:hover,.finish-btn-top:focus-visible{background:rgba(185,28,70,.68);transform:translateY(-1px)}
+@media(max-width:820px){.finish-btn-top{order:20;margin-left:0;padding:7px 9px;font-size:.72rem}}
+@media(max-width:560px){.finish-btn-top{position:fixed;right:8px;top:max(8px,env(safe-area-inset-top));z-index:40;padding:7px 10px;background:rgba(94,12,34,.96)}}
+
+
+/* ===== v3.4 · Matrices, pausa y rendimiento ===== */
+.pause-btn-top{
+  border:1px solid rgba(91,225,255,.58);border-radius:8px;padding:8px 12px;background:rgba(8,71,105,.7);
+  color:#dffaff;font-weight:900;letter-spacing:.05em;cursor:pointer;white-space:nowrap
+}
+.pause-btn-top:hover,.pause-btn-top:focus-visible{background:rgba(14,112,155,.86);transform:translateY(-1px)}
+.pause-overlay{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:18px;background:rgba(1,5,14,.78);backdrop-filter:blur(8px)}
+.pause-overlay[hidden]{display:none!important}
+.pause-card{width:min(460px,94vw);padding:30px;text-align:center;border:1px solid rgba(72,222,255,.65);box-shadow:0 0 54px rgba(32,229,255,.23)}
+.pause-symbol{font-size:3.2rem;line-height:1;color:#67ecff;text-shadow:0 0 24px rgba(32,229,255,.8)}
+.pause-card h2{margin:.5rem 0;color:#effdff;letter-spacing:.08em}.pause-card p{color:#c7e9f4;line-height:1.55}
+
+.question-panel,.question-panel *{box-sizing:border-box;min-width:0}
+.question-panel mjx-container[jax="SVG"]{max-width:100%;overflow-x:auto;overflow-y:visible;padding:.12em .06em}
+.question-panel mjx-container[jax="SVG"] > svg{max-width:none;min-width:max-content}
+.question-panel.matrix-question{contain:layout;overflow-y:auto!important;overflow-x:hidden!important;align-content:start}
+.question-panel.matrix-question #miniCanvas{display:none!important;height:0!important;margin:0!important;border:0!important}
+.question-panel.matrix-question .question-body{
+  flex:0 0 auto!important;min-height:auto!important;max-height:none!important;margin:7px 0 10px!important;
+  overflow:visible!important;padding:12px 16px!important
+}
+.question-panel.matrix-question .question-prompt-content{font-size:clamp(1rem,1.4vw,1.32rem);line-height:1.48;overflow:visible!important}
+.question-panel.matrix-question .answer-area{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px!important;
+  flex:0 0 auto!important;overflow:visible!important;margin:0 0 9px!important
+}
+.question-panel.matrix-question .option-btn{
+  width:100%;min-height:58px;height:auto!important;padding:10px 12px!important;display:grid!important;
+  grid-template-columns:30px minmax(0,1fr);align-items:center;overflow:visible!important;white-space:normal!important
+}
+.question-panel.matrix-question .option-btn .option-copy,.question-panel.matrix-question .option-btn span:last-child{min-width:0;overflow-x:auto;overflow-y:visible}
+.question-panel.matrix-question .question-actions{position:relative!important;bottom:auto!important;z-index:4;background:rgba(2,9,22,.98);flex:0 0 auto!important}
+.question-panel.matrix-question .feedback-box{position:relative!important;z-index:3;flex:0 0 auto!important;max-height:none!important;overflow:visible!important}
+.question-panel.matrix-question .roman-list{margin:.55em 0 .15em;padding-left:1.9em}.question-panel.matrix-question .roman-list li{margin:.3em 0}
+
+@media(max-width:900px){
+  .question-panel.matrix-question .answer-area{grid-template-columns:1fr}
+  .question-panel.matrix-question .question-prompt-content{font-size:1rem}
+}
+@media(max-width:820px){.pause-btn-top{order:19;padding:7px 9px;font-size:.72rem}}
+@media(max-width:560px){
+  .pause-btn-top{position:fixed;right:103px;top:max(8px,env(safe-area-inset-top));z-index:41;padding:7px 9px;background:rgba(5,68,96,.96)}
+  .question-panel.matrix-question{padding:8px!important}.question-panel.matrix-question .question-body{padding:9px 10px!important}
+  .question-panel.matrix-question .option-btn{min-height:50px;padding:8px!important}
+}
+@media(prefers-reduced-motion:reduce){.question-panel,.pause-btn-top,.finish-btn-top{transition:none!important}}
